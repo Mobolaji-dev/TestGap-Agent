@@ -1,9 +1,11 @@
 import asyncio
+import difflib
 import logging
 import queue
 import time
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path, PurePosixPath
 
 from agent.graph import build_graph
 from agent.telemetry import langgraph_callbacks
@@ -16,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class RunNotFoundError(Exception):
+    pass
+
+
+class TestPatchUnavailableError(Exception):
     pass
 
 
@@ -51,6 +57,48 @@ class RunService:
         if events is None:
             raise RunNotFoundError(run_id)
         return events
+
+    def get_test_patch(self, run_id: str, project: ProjectRecord) -> str:
+        run = self.get_run(run_id)
+        if run.project_id != project.id:
+            raise RunNotFoundError(run_id)
+        if not run.candidate_tests:
+            raise TestPatchUnavailableError(run_id)
+
+        root = project.path.resolve(strict=True)
+        chunks: list[str] = []
+        for candidate in run.candidate_tests:
+            relative = PurePosixPath(candidate.test_path)
+            if (
+                relative.is_absolute()
+                or ".." in relative.parts
+                or relative.suffix != ".py"
+                or not relative.parts
+            ):
+                raise TestPatchUnavailableError(run_id)
+
+            test_path = (root / Path(*relative.parts)).resolve()
+            try:
+                test_path.relative_to(root)
+            except ValueError as exc:
+                raise TestPatchUnavailableError(run_id) from exc
+
+            if test_path.exists() and (not test_path.is_file() or test_path.is_symlink()):
+                raise TestPatchUnavailableError(run_id)
+            original = test_path.read_text().splitlines(keepends=True) if test_path.exists() else []
+            proposed = candidate.content.splitlines(keepends=True)
+            if proposed and not proposed[-1].endswith(("\n", "\r")):
+                proposed[-1] += "\n"
+            fromfile = f"a/{relative.as_posix()}" if original else "/dev/null"
+            chunks.extend(
+                difflib.unified_diff(
+                    original,
+                    proposed,
+                    fromfile=fromfile,
+                    tofile=f"b/{relative.as_posix()}",
+                )
+            )
+        return "".join(chunks)
 
     def cancel_run(self, run_id: str) -> RunResponse:
         run = self.get_run(run_id)

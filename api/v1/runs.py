@@ -3,11 +3,16 @@ import json
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from schemas.run import CreateRunRequest, RunResponse
 from services.project_service import ProjectNotFoundError, ProjectService
-from services.run_service import RunNotFoundError, RunService, get_run_service
+from services.run_service import (
+    RunNotFoundError,
+    RunService,
+    TestPatchUnavailableError,
+    get_run_service,
+)
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -49,6 +54,48 @@ async def cancel_run(
         return runs.cancel_run(run_id)
     except RunNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Run not found") from exc
+
+
+@router.get("/{run_id}/diff")
+async def get_run_diff(
+    run_id: str,
+    runs: RunService = Depends(get_run_service),
+    projects: ProjectService = Depends(get_project_service),
+) -> dict[str, str]:
+    try:
+        run = runs.get_run(run_id)
+        project = projects.get_project(run.project_id)
+        diff = runs.get_test_patch(run_id, project)
+    except RunNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run or project not found") from exc
+    except ProjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run or project not found") from exc
+    except TestPatchUnavailableError as exc:
+        raise HTTPException(status_code=409, detail="No generated test diff is available") from exc
+    return {"run_id": run_id, "diff": diff}
+
+
+@router.get("/{run_id}/patch")
+async def download_run_patch(
+    run_id: str,
+    runs: RunService = Depends(get_run_service),
+    projects: ProjectService = Depends(get_project_service),
+) -> Response:
+    try:
+        run = runs.get_run(run_id)
+        project = projects.get_project(run.project_id)
+        patch = runs.get_test_patch(run_id, project)
+    except RunNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run or project not found") from exc
+    except ProjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run or project not found") from exc
+    except TestPatchUnavailableError as exc:
+        raise HTTPException(status_code=409, detail="No generated test patch is available") from exc
+    return Response(
+        content=patch,
+        media_type="text/x-diff",
+        headers={"Content-Disposition": f'attachment; filename="{run_id}.patch"'},
+    )
 
 
 @router.get("/{run_id}/events")

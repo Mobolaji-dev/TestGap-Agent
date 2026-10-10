@@ -25,11 +25,13 @@ Open `http://localhost:8000/docs` for the API schema. The frontend dev server at
 
 ## Frontend API
 
-- `GET /api/v1/projects`
-- `POST /api/v1/runs` with `{ "project_id": "...", "target_limit": 3, "repair_limit": 2, "verify_mutations": true }`
-- `GET /api/v1/runs/{run_id}`
-- `GET /api/v1/runs/{run_id}/events` (SSE; accepts `?after=<event_id>`)
-- `POST /api/v1/runs/{run_id}/cancel`
+- `GET /api/projects`
+- `POST /api/runs` with `{ "project_id": "...", "target_limit": 3, "repair_limit": 2, "verify_mutations": true }`
+- `GET /api/runs/{run_id}`
+- `GET /api/runs/{run_id}/events` (SSE; accepts `?after=<event_id>`)
+- `POST /api/runs/{run_id}/cancel`
+- `GET /api/runs/{run_id}/diff` (JSON response containing the generated test-only unified diff)
+- `GET /api/runs/{run_id}/patch` (downloads the same diff as a `.patch` file)
 
 Run/event schemas are defined in `schemas/run.py`; project schemas are in `schemas/project.py`.
 

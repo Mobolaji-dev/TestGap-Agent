@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
     litellm_model: str = Field(default="claude-haiku", validation_alias="LITELLM_MODEL")
     neatlogs_api_key: SecretStr | None = Field(default=None, validation_alias="NEATLOGS_API_KEY")
-    api_prefix: str = "/api/v1"
+    api_prefix: str = "/api"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
