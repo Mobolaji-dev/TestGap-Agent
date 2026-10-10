@@ -1,0 +1,86 @@
+import asyncio
+import json
+from collections.abc import AsyncIterator
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
+
+from schemas.run import CreateRunRequest, RunResponse
+from services.project_service import ProjectNotFoundError, ProjectService
+from services.run_service import RunNotFoundError, RunService, get_run_service
+
+router = APIRouter(prefix="/runs", tags=["runs"])
+
+
+def get_project_service() -> ProjectService:
+    return ProjectService()
+
+
+@router.post("", response_model=RunResponse, status_code=status.HTTP_202_ACCEPTED)
+async def create_run(
+    payload: CreateRunRequest,
+    projects: ProjectService = Depends(get_project_service),
+    runs: RunService = Depends(get_run_service),
+) -> RunResponse:
+    try:
+        project = projects.get_project(payload.project_id)
+    except ProjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return await runs.create_run(project, payload)
+
+
+@router.get("/{run_id}", response_model=RunResponse)
+async def get_run(
+    run_id: str,
+    runs: RunService = Depends(get_run_service),
+) -> RunResponse:
+    try:
+        return runs.get_run(run_id)
+    except RunNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run not found") from exc
+
+
+@router.post("/{run_id}/cancel", response_model=RunResponse)
+async def cancel_run(
+    run_id: str,
+    runs: RunService = Depends(get_run_service),
+) -> RunResponse:
+    try:
+        return runs.cancel_run(run_id)
+    except RunNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run not found") from exc
+
+
+@router.get("/{run_id}/events")
+async def stream_run_events(
+    run_id: str,
+    request: Request,
+    after: int = 0,
+    runs: RunService = Depends(get_run_service),
+) -> StreamingResponse:
+    try:
+        runs.get_run(run_id)
+    except RunNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run not found") from exc
+
+    async def events() -> AsyncIterator[str]:
+        cursor = after
+        while not await request.is_disconnected():
+            new_events = runs.get_events(run_id, after_event_id=cursor)
+            for event in new_events:
+                cursor = event.event_id
+                body = json.dumps(event.model_dump(mode="json"))
+                yield f"id: {event.event_id}\nevent: {event.type}\ndata: {body}\n\n"
+
+            run = runs.get_run(run_id)
+            if run.status in {"completed", "completed_with_warnings", "failed", "cancelled"}:
+                break
+            if not new_events:
+                yield ": keep-alive\n\n"
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
