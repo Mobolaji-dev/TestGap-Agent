@@ -45,7 +45,7 @@ Run/event schemas are defined in `schemas/run.py`; project schemas are in `schem
 
 ## Hackathon partner setup
 
-- **neatlogs:** Set `NEATLOGS_API_KEY` in the ignored local `.env`. Run the app and inspect the `testgap-agent` workflow in the Neatlogs dashboard. The current graph callback records the LangGraph run; a real run is still needed to capture demo evidence.
+- **neatlogs:** Set `NEATLOGS_API_KEY` in the ignored local `.env`. Run the app and inspect the `testgap-analysis` workflow in the Neatlogs dashboard. The current graph callback records the LangGraph run; a real run is still needed to capture demo evidence.
 - **Entire:** Install the Entire CLI, then run `entire enable --agent codex --skip-push-sessions`, `entire plugin install graph`, and `entire graph init-agents --repo .`. The last command adds `AGENTS.md`/`CLAUDE.md` instructions. Approve the installed hooks in Codex with `/hooks` before expecting automatic session checkpoints. The Graph setup and query are recorded in [evidence/entire-graph.md](evidence/entire-graph.md).
 - **cfo.ai:** Use the prompt in [evidence/cfo-ai-model-brief.md](evidence/cfo-ai-model-brief.md) to create an 18-month, three-scenario business model. Save a cfo.ai export or screenshot in `evidence/` after the account is connected; the brief is prepared input, not proof of a completed cfo.ai model.
 - **AWS / Bedrock (optional):** Use a local AWS profile after the event reissues the exposed credentials. Keep credentials outside this repository. The Bedrock test-writer adapter has not been implemented yet.

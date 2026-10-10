@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from agent.telemetry import initialize_neatlogs
+from agent.telemetry import initialize_neatlogs, shutdown_neatlogs
 from api.v1.projects import router as projects_router
 from api.v1.runs import router as runs_router
 from app.config.settings import settings
@@ -11,7 +11,10 @@ from app.config.settings import settings
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     initialize_neatlogs()
-    yield
+    try:
+        yield
+    finally:
+        shutdown_neatlogs()
 
 
 app = FastAPI(

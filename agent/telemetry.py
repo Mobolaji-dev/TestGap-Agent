@@ -19,7 +19,11 @@ def initialize_neatlogs() -> bool:
     try:
         import neatlogs
 
-        neatlogs.init(api_key=api_key.get_secret_value(), workflow_name="testgap-agent")
+        neatlogs.init(
+            api_key=api_key.get_secret_value(),
+            endpoint="https://ingest.neatlogs.com",
+            workflow_name="testgap-analysis",
+        )
         _neatlogs = neatlogs
         _initialized = True
         logger.info("neatlogs instrumentation initialized")
@@ -51,3 +55,21 @@ def wrap_llm_client(client):
     except Exception:
         logger.exception("Could not wrap the model client with Neatlogs")
         return client
+
+
+def shutdown_neatlogs() -> None:
+    """Flush and close the Neatlogs SDK once when the API process exits."""
+    global _initialized, _neatlogs
+    if not _initialized or _neatlogs is None:
+        return
+    try:
+        _neatlogs.flush()
+    except Exception:
+        logger.exception("Could not flush Neatlogs telemetry")
+    try:
+        _neatlogs.shutdown()
+    except Exception:
+        logger.exception("Could not shut down Neatlogs telemetry")
+    finally:
+        _neatlogs = None
+        _initialized = False
