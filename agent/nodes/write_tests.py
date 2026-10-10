@@ -64,6 +64,20 @@ def _test_style(root: Path) -> str:
     return ""
 
 
+def _candidate_test_path(root: Path, source_path: Path) -> str:
+    test_dir = next(
+        (name for name in ("tests", "test") if (root / name).is_dir()),
+        "tests",
+    )
+    stem = f"test_{source_path.stem}_testgap"
+    candidate = Path(test_dir) / f"{stem}.py"
+    suffix = 2
+    while (root / candidate).exists():
+        candidate = Path(test_dir) / f"{stem}_{suffix}.py"
+        suffix += 1
+    return candidate.as_posix()
+
+
 def write_tests(state: TestGapState) -> dict:
     targets = state.get("targets", [])
     if not targets:
@@ -135,7 +149,7 @@ def write_tests(state: TestGapState) -> dict:
         }
         candidate = {
             "target_path": relative_path,
-            "test_path": f"tests/test_{source_path.stem}_testgap.py",
+            "test_path": _candidate_test_path(root, source_path),
             "content": content,
             "model": settings.litellm_model,
         }

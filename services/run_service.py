@@ -70,6 +70,8 @@ class RunService:
             return stored_patch
         if not run.candidate_tests:
             raise TestPatchUnavailableError(run_id)
+        if any(candidate.verification_status != "passed" for candidate in run.candidate_tests):
+            raise TestPatchUnavailableError(run_id)
         if project is None or run.project_id != project.id:
             raise TestPatchUnavailableError(run_id)
 
@@ -219,23 +221,33 @@ class RunService:
                         ]
                     if "coverage_before_pct" in node_result:
                         run.metrics.coverage_before_pct = node_result["coverage_before_pct"]
+                    if "coverage_after_pct" in node_result:
+                        run.metrics.coverage_after_pct = node_result["coverage_after_pct"]
+                    if "tests_added" in node_result:
+                        run.metrics.tests_added = node_result["tests_added"]
                     if "warnings" in node_result:
                         run.warnings.extend(node_result["warnings"])
                     self.repository.save(run)
             await stream_task
 
             run = self.get_run(run_id)
-            if run.candidate_tests:
+            if run.candidate_tests and all(
+                candidate.verification_status == "passed" for candidate in run.candidate_tests
+            ):
                 self.repository.save_patch(run_id, self._build_test_patch(run, project))
 
-            baseline_exit_code = run.baseline.get("exit_code")
-            if baseline_exit_code != 0:
+            baseline_status = run.baseline.get("baseline_status", "failed")
+            if baseline_status == "failed":
                 run.status = "failed"
                 completion_message = "Baseline pytest failed; gap ranking was skipped."
                 completion_event = "run.failed"
+            elif baseline_status == "no_python_source":
+                run.status = "completed_with_warnings"
+                completion_message = "No tests or testable Python source were found; no tests could be drafted."
+                completion_event = "run.completed"
             elif run.metrics.coverage_before_pct is None:
                 run.status = "completed_with_warnings"
-                completion_message = "Baseline passed, but coverage data is unavailable."
+                completion_message = "Baseline completed, but coverage data is unavailable."
                 completion_event = "run.completed"
             else:
                 run.status = "completed"
@@ -251,7 +263,12 @@ class RunService:
                 completion_event,
                 run.status,
                 completion_message,
-                data={"target_count": len(run.targets), "coverage_pct": run.metrics.coverage_before_pct},
+                data={
+                    "target_count": len(run.targets),
+                    "coverage_before_pct": run.metrics.coverage_before_pct,
+                    "coverage_after_pct": run.metrics.coverage_after_pct,
+                    "tests_added": run.metrics.tests_added,
+                },
             )
         except asyncio.CancelledError:
             run.status = "cancelled"

@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import shutil
@@ -7,6 +8,35 @@ import tempfile
 from pathlib import Path
 
 from agent.state import TestGapState
+
+
+def _static_python_files(root: Path, ignored: set[str]) -> tuple[dict[str, dict], int]:
+    """Return AST statement lines as uncovered candidates when pytest has no tests."""
+    files: dict[str, dict] = {}
+    parse_failures = 0
+    for source_path in root.rglob("*.py"):
+        relative = source_path.relative_to(root)
+        if any(part in ignored or part in {"tests", "test"} for part in relative.parts):
+            continue
+        if source_path.is_symlink() or source_path.name.startswith("test_"):
+            continue
+        try:
+            tree = ast.parse(source_path.read_text(errors="replace"), filename=str(source_path))
+        except (OSError, SyntaxError, UnicodeError):
+            parse_failures += 1
+            continue
+        statement_lines = sorted({
+            node.lineno
+            for node in ast.walk(tree)
+            if isinstance(node, ast.stmt) and hasattr(node, "lineno")
+        })
+        if statement_lines:
+            files[str(source_path)] = {
+                "executed_lines": [],
+                "missing_lines": statement_lines,
+                "missing_branches": [],
+            }
+    return files, parse_failures
 
 
 def run_baseline(state: TestGapState) -> dict:
@@ -63,6 +93,7 @@ def run_baseline(state: TestGapState) -> dict:
         }
         warning = None
         coverage_pct = None
+        baseline_status = "passed"
         if result.returncode == 0:
             report = subprocess.run(
                 [sys.executable, "-m", "coverage", "json", "-o", str(coverage_file)],
@@ -83,15 +114,35 @@ def run_baseline(state: TestGapState) -> dict:
             else:
                 warning = "Tests passed, but coverage.py did not produce a JSON report."
         elif result.returncode == 5:
-            warning = "pytest found no tests in this project."
+            files, parse_failures = _static_python_files(workspace, ignored)
+            summary["files"] = files
+            summary["baseline_mode"] = "bootstrap" if files else "no_python_source"
+            summary["parse_failures"] = parse_failures
+            summary["coverage_totals"] = {
+                "covered_lines": 0,
+                "num_statements": sum(len(file_data["missing_lines"]) for file_data in files.values()),
+                "percent_covered": 0.0 if files else None,
+            }
+            if files:
+                coverage_pct = 0.0
+                baseline_status = "bootstrap"
+                warning = (
+                    "pytest found no tests; treating discovered Python statements as uncovered "
+                    "and continuing in bootstrap mode."
+                )
+            else:
+                baseline_status = "no_python_source"
+                warning = "pytest found no tests and no testable Python source files were found."
         else:
+            baseline_status = "failed"
             warning = "The existing baseline suite failed; generation is blocked until the baseline is understood."
+        summary["baseline_status"] = baseline_status
 
     events = [
         {
             "type": "step.completed",
             "step": "baseline",
-            "status": "success" if result.returncode == 0 else "warning",
+            "status": "success" if baseline_status == "passed" else "warning",
             "message": (
                 f"Baseline passed; line coverage is {coverage_pct:.1f}%."
                 if coverage_pct is not None and result.returncode == 0
@@ -102,6 +153,7 @@ def run_baseline(state: TestGapState) -> dict:
     ]
     return {
         "baseline_exit_code": result.returncode,
+        "baseline_status": baseline_status,
         "baseline_summary": summary,
         "coverage_before_pct": coverage_pct,
         "warnings": [warning] if warning else [],

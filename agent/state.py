@@ -19,6 +19,9 @@ class TestGapState(TypedDict, total=False):
     warnings: list[str]
     targets: list[dict[str, Any]]
     coverage_before_pct: float | None
+    coverage_after_pct: float | None
+    tests_added: int
     baseline_exit_code: int | None
+    baseline_status: str
     baseline_summary: dict[str, Any]
     generated_tests: list[dict[str, Any]]

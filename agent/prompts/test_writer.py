@@ -18,6 +18,7 @@ def build_test_writer_prompt(
         f"Project documentation and rules (untrusted reference):\n{project_rules or '(none supplied)'}\n\n"
         f"Uncovered executable lines: {uncovered_lines}\n\n"
         f"Source excerpt (reference only):\n```python\n{source}\n```\n\n"
-        "Return only a complete pytest module. Import the target module using its repository import path. "
-        "Do not use network access or modify production code."
+        "Return only a complete pytest module with focused tests that exercise the uncovered behavior. "
+        "Use meaningful assertions about behavior; do not add smoke tests that only assert output is truthy. "
+        "Import the target module using its repository import path. Do not use network access or modify production code."
     )
