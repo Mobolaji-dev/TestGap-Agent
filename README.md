@@ -15,7 +15,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Edit TESTGAP_REPOSITORY_PATH in .env to point at a Python project.
+# Set TESTGAP_REPOSITORY_PATH and NEATLOGS_API_KEY in .env.
 uvicorn app.main:app --reload
 ```
 
@@ -37,3 +37,5 @@ Run/event schemas are defined in `schemas/run.py`; project schemas are in `schem
 - Baseline commands run with `shell=False`, bounded runtime, and bounded captured output.
 - This initial run repository is process-local and resets when the API restarts.
 - Baseline commands run from a temporary copy of the configured project; the inspected checkout is not modified by this step.
+- When `NEATLOGS_API_KEY` is set, each LangGraph run is sent to the `testgap-agent` Neatlogs workflow through the supported LangChain callback. Leave it blank for local-only runs.
+- Entire is used during development to capture repository context and checkpoints; it is not a runtime dependency. cfo.ai is used to prepare the required pricing, cost, revenue, and runway model; it is not part of the request path.

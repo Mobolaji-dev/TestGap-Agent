@@ -5,4 +5,4 @@ pydantic-settings>=2.4,<3.0
 langgraph>=0.2,<2.0
 coverage>=7.6,<8.0
 pytest>=8.3,<9.0
-neatlogs>=0.1
+neatlogs[langchain]>=0.1

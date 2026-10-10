@@ -5,6 +5,7 @@ import uuid
 from datetime import UTC, datetime
 
 from agent.graph import build_graph
+from agent.telemetry import langgraph_callbacks
 from app.config.settings import settings
 from db.repository.run_repository import RunRepository, run_repository
 from schemas.project import ProjectRecord
@@ -76,7 +77,18 @@ class RunService:
                 "targets": [],
                 "warnings": [],
             }
-            async for update in graph.astream(initial_state, stream_mode="updates"):
+            callbacks = langgraph_callbacks()
+            graph_config = {
+                "run_name": f"testgap_{run_id}",
+                "metadata": {"testgap_run_id": run_id},
+            }
+            if callbacks:
+                graph_config["callbacks"] = callbacks
+            async for update in graph.astream(
+                initial_state,
+                config=graph_config,
+                stream_mode="updates",
+            ):
                 for node_name, node_result in update.items():
                     if not isinstance(node_result, dict):
                         continue
