@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 from app.config.settings import settings
 from db.repository.run_repository import RunRepository
@@ -49,3 +50,18 @@ def test_scan_persists_baseline_and_ranked_targets(tmp_path):
     assert [event.type for event in run.events][-1] == "run.completed"
     assert restored == run
     assert project_path.joinpath("app.py").read_text().endswith("return 'nonpositive'\n")
+
+
+def test_run_repository_falls_back_on_unwritable_path(monkeypatch, tmp_path):
+    target = Path(".runs/testgap.sqlite3")
+    original_mkdir = Path.mkdir
+
+    def selective_mkdir(self, *args, **kwargs):
+        if "/tmp" not in str(self):
+            raise OSError(30, "Read-only file system: '.runs'")
+        return original_mkdir(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "mkdir", selective_mkdir)
+    repo = RunRepository(target)
+    assert str(repo.database_path) == "/tmp/testgap-runs/testgap.sqlite3"
+

@@ -1,4 +1,5 @@
 import json
+import logging
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -9,12 +10,31 @@ from app.config.settings import settings
 from schemas.run import RunEvent, RunResponse
 
 
+logger = logging.getLogger(__name__)
+
+
 class RunRepository:
     """SQLite-backed run and event store for API results across process restarts."""
 
     def __init__(self, database_path: Path | str | None = None) -> None:
-        self.database_path = Path(database_path or settings.run_database_path).expanduser()
-        self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path = Path(database_path or settings.run_database_path).expanduser()
+        try:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            self.database_path = target_path
+            self._init_db()
+        except (OSError, sqlite3.OperationalError) as exc:
+            fallback_dir = Path("/tmp/testgap-runs")
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            self.database_path = fallback_dir / target_path.name
+            logger.warning(
+                "Could not initialize database at %s (%s); falling back to %s",
+                target_path,
+                exc,
+                self.database_path,
+            )
+            self._init_db()
+
+    def _init_db(self) -> None:
         with self._connection() as connection:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS runs (run_id TEXT PRIMARY KEY, payload TEXT NOT NULL)"
