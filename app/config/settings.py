@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +10,14 @@ class Settings(BaseSettings):
 
     repository_path: Path | None = Field(default=None)
     run_timeout_seconds: int = Field(default=90, ge=5, le=600)
+    run_database_path: Path = Field(default=Path(".runs/testgap.sqlite3"))
+    litellm_api_key: SecretStr | None = Field(default=None, validation_alias="LITELLM_API_KEY")
+    litellm_base_url: str = Field(
+        default="https://litellm.vision.aivar.app/v1",
+        validation_alias="LITELLM_BASE_URL",
+    )
+    litellm_model: str = Field(default="claude-haiku", validation_alias="LITELLM_MODEL")
+    neatlogs_api_key: SecretStr | None = Field(default=None, validation_alias="NEATLOGS_API_KEY")
     api_prefix: str = "/api/v1"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 

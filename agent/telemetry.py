@@ -1,5 +1,6 @@
 import logging
-import os
+
+from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 _initialized = False
@@ -9,16 +10,16 @@ _neatlogs = None
 def initialize_neatlogs() -> bool:
     """Initialize Neatlogs when configured; local runs still work without it."""
     global _initialized, _neatlogs
-    if _initialized:
+    if _initialized and _neatlogs is not None:
         return True
-    api_key = os.environ.get("NEATLOGS_API_KEY")
+    api_key = settings.neatlogs_api_key
     if not api_key:
         logger.info("NEATLOGS_API_KEY is not set; remote trace export is disabled")
         return False
     try:
         import neatlogs
 
-        neatlogs.init(api_key=api_key, workflow_name="testgap-agent")
+        neatlogs.init(api_key=api_key.get_secret_value(), workflow_name="testgap-agent")
         _neatlogs = neatlogs
         _initialized = True
         logger.info("neatlogs instrumentation initialized")
@@ -39,3 +40,14 @@ def langgraph_callbacks() -> list:
     except Exception:
         logger.exception("Could not create Neatlogs LangGraph callback")
         return []
+
+
+def wrap_llm_client(client):
+    """Capture direct OpenAI-compatible model calls when Neatlogs is configured."""
+    if not initialize_neatlogs() or _neatlogs is None:
+        return client
+    try:
+        return _neatlogs.wrap(client)
+    except Exception:
+        logger.exception("Could not wrap the model client with Neatlogs")
+        return client

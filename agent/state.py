@@ -21,3 +21,4 @@ class TestGapState(TypedDict, total=False):
     coverage_before_pct: float | None
     baseline_exit_code: int | None
     baseline_summary: dict[str, Any]
+    generated_tests: list[dict[str, Any]]

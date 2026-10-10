@@ -4,9 +4,10 @@ TestGap Finder is an agent for finding high-priority Python test gaps and produc
 
 ## Current implementation slice
 
-The API currently supports configured project discovery, asynchronous run creation, run status, cancellation, and SSE events. The LangGraph workflow inspects the selected repository, runs a baseline pytest/coverage pass, and ranks uncovered files with a transparent heuristic. neatlogs initializes at app startup when available. Test generation, repair, and mutation verification are planned workflow stages and are not implemented yet.
+The API supports configured project discovery, asynchronous run creation, run status, cancellation, and SSE events. The LangGraph workflow inspects the selected repository, runs a baseline pytest/coverage pass, ranks uncovered files, and drafts tests for the highest-ranked gap with the configured LiteLLM model. Candidate tests are returned for review but are not written into the selected repository or executed yet; repair and mutation verification remain planned.
 
 The backend uses the layering from `hammet-core` (routes → services → repositories) and the agent layout from `langgraph-wa-agent` (`state`, `nodes`, `prompts`, `graph`).
+Run records, baseline coverage details, ranked targets, and events are stored in SQLite at `.runs/testgap.sqlite3` by default; set `TESTGAP_RUN_DATABASE_PATH` to choose another location.
 
 ## Run locally
 
@@ -15,7 +16,8 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Set TESTGAP_REPOSITORY_PATH and NEATLOGS_API_KEY in .env.
+# Set TESTGAP_REPOSITORY_PATH and LITELLM_API_KEY in .env.
+# NEATLOGS_API_KEY is separate and enables trace export.
 uvicorn app.main:app --reload
 ```
 
@@ -35,9 +37,10 @@ Run/event schemas are defined in `schemas/run.py`; project schemas are in `schem
 
 - Only a server-configured repository path can be selected; the browser cannot submit an arbitrary filesystem path.
 - Baseline commands run with `shell=False`, bounded runtime, and bounded captured output.
-- This initial run repository is process-local and resets when the API restarts.
+- Run results and events survive API restarts in the SQLite run repository.
 - Baseline commands run from a temporary copy of the configured project; the inspected checkout is not modified by this step.
-- When `NEATLOGS_API_KEY` is set, each LangGraph run is sent to the `testgap-agent` Neatlogs workflow through the supported LangChain callback. Leave it blank for local-only runs.
+- Set `LITELLM_API_KEY` in the ignored local `.env`. The LiteLLM base URL defaults to `https://litellm.vision.aivar.app/v1`; `LITELLM_MODEL` defaults to `claude-haiku` and can be set to any model ID shown in the hackathon portal. One run drafts tests for at most the top-ranked target.
+- Set a separate `NEATLOGS_API_KEY` to export runtime traces. Without it, model calls still work but neatlogs export is disabled. Source excerpts and repository documentation are sent to the selected model; only use repositories you are authorized to share.
 - Entire is used during development to capture repository context and checkpoints; it is not a runtime dependency. cfo.ai is used to prepare the required pricing, cost, revenue, and runway model; it is not part of the request path.
 
 ## Hackathon partner setup

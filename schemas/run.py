@@ -45,6 +45,13 @@ class RiskTarget(BaseModel):
     rationale: list[str]
 
 
+class TestCandidate(BaseModel):
+    target_path: str
+    test_path: str
+    content: str
+    model: str
+
+
 class RunResponse(BaseModel):
     run_id: str
     project_id: str
@@ -54,6 +61,8 @@ class RunResponse(BaseModel):
     updated_at: datetime
     events: list[RunEvent] = Field(default_factory=list)
     targets: list[RiskTarget] = Field(default_factory=list)
+    baseline: dict[str, Any] = Field(default_factory=dict)
+    candidate_tests: list[TestCandidate] = Field(default_factory=list)
     metrics: RunMetrics = Field(default_factory=RunMetrics)
     trace_url: str | None = None
     warnings: list[str] = Field(default_factory=list)

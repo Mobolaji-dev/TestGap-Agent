@@ -6,6 +6,10 @@ def rank_gaps(state: TestGapState) -> dict:
     files = state.get("baseline_summary", {}).get("files", {})
     targets: list[dict] = []
     for path, file_data in files.items():
+        path_parts = path.replace("\\", "/").split("/")
+        filename = path_parts[-1].lower()
+        if "tests" in path_parts or "test" in path_parts or filename.startswith("test_"):
+            continue
         missing = file_data.get("missing_lines", [])
         if not missing:
             continue
