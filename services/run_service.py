@@ -2,6 +2,7 @@ import asyncio
 import difflib
 import logging
 import queue
+import shutil
 import time
 import uuid
 from datetime import UTC, datetime
@@ -10,6 +11,7 @@ from pathlib import Path, PurePosixPath
 from agent.graph import build_graph
 from agent.telemetry import langgraph_callbacks
 from app.config.settings import settings
+from db.repository.project_repository import ProjectRepository
 from db.repository.run_repository import RunRepository, run_repository
 from schemas.project import ProjectRecord
 from schemas.run import CreateRunRequest, RiskTarget, RunResponse, TestCandidate
@@ -35,10 +37,13 @@ class RunService:
         run = RunResponse(
             run_id=f"run_{uuid.uuid4().hex[:12]}",
             project_id=project.id,
+            repository_url=project.repository_url,
             status="queued",
             created_at=now,
             updated_at=now,
         )
+        if project.repository_url:
+            project.path = settings.repository_workspace_root / run.run_id
         self.repository.create(run)
         self._event(run.run_id, "run.started", "queued", "Analysis queued.")
         run = self.get_run(run.run_id)
@@ -58,13 +63,20 @@ class RunService:
             raise RunNotFoundError(run_id)
         return events
 
-    def get_test_patch(self, run_id: str, project: ProjectRecord) -> str:
+    def get_test_patch(self, run_id: str, project: ProjectRecord | None = None) -> str:
         run = self.get_run(run_id)
-        if run.project_id != project.id:
-            raise RunNotFoundError(run_id)
+        stored_patch = self.repository.get_patch(run_id)
+        if stored_patch is not None:
+            return stored_patch
         if not run.candidate_tests:
             raise TestPatchUnavailableError(run_id)
+        if project is None or run.project_id != project.id:
+            raise TestPatchUnavailableError(run_id)
 
+        return self._build_test_patch(run, project)
+
+    @staticmethod
+    def _build_test_patch(run: RunResponse, project: ProjectRecord) -> str:
         root = project.path.resolve(strict=True)
         chunks: list[str] = []
         for candidate in run.candidate_tests:
@@ -75,16 +87,16 @@ class RunService:
                 or relative.suffix != ".py"
                 or not relative.parts
             ):
-                raise TestPatchUnavailableError(run_id)
+                raise TestPatchUnavailableError(run.run_id)
 
             test_path = (root / Path(*relative.parts)).resolve()
             try:
                 test_path.relative_to(root)
             except ValueError as exc:
-                raise TestPatchUnavailableError(run_id) from exc
+                raise TestPatchUnavailableError(run.run_id) from exc
 
             if test_path.exists() and (not test_path.is_file() or test_path.is_symlink()):
-                raise TestPatchUnavailableError(run_id)
+                raise TestPatchUnavailableError(run.run_id)
             original = test_path.read_text().splitlines(keepends=True) if test_path.exists() else []
             proposed = candidate.content.splitlines(keepends=True)
             if proposed and not proposed[-1].endswith(("\n", "\r")):
@@ -116,6 +128,31 @@ class RunService:
         self.repository.save(run)
         started = time.perf_counter()
         try:
+            if project.repository_url:
+                self._event(
+                    run_id,
+                    "step.started",
+                    "running",
+                    "Cloning public GitHub repository.",
+                    step="clone",
+                    data={"repository_url": project.repository_url},
+                )
+                await asyncio.to_thread(
+                    ProjectRepository.clone_repository,
+                    project.repository_url,
+                    project.path,
+                )
+                project.test_framework = (
+                    "pytest" if ProjectRepository._has_pytest(project.path) else None
+                )
+                self._event(
+                    run_id,
+                    "step.completed",
+                    "success",
+                    f"Cloned {project.name} from GitHub.",
+                    step="clone",
+                    data={"test_framework": project.test_framework},
+                )
             graph = build_graph()
             initial_state = {
                 "run_id": run_id,
@@ -187,6 +224,10 @@ class RunService:
                     self.repository.save(run)
             await stream_task
 
+            run = self.get_run(run_id)
+            if run.candidate_tests:
+                self.repository.save_patch(run_id, self._build_test_patch(run, project))
+
             baseline_exit_code = run.baseline.get("exit_code")
             if baseline_exit_code != 0:
                 run.status = "failed"
@@ -224,6 +265,9 @@ class RunService:
             run.metrics.duration_ms = int((time.perf_counter() - started) * 1000)
             self.repository.save(run)
             self._event(run_id, "run.failed", "failed", "Analysis failed.", data={"error": str(exc)})
+        finally:
+            if project.repository_url:
+                shutil.rmtree(project.path, ignore_errors=True)
 
     def _event(
         self,

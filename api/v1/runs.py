@@ -28,7 +28,10 @@ async def create_run(
     runs: RunService = Depends(get_run_service),
 ) -> RunResponse:
     try:
-        project = projects.get_project(payload.project_id)
+        if payload.repository_url:
+            project = projects.get_github_project(payload.repository_url)
+        else:
+            project = projects.get_project(payload.project_id or "")
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return await runs.create_run(project, payload)
@@ -64,7 +67,12 @@ async def get_run_diff(
 ) -> dict[str, str]:
     try:
         run = runs.get_run(run_id)
-        project = projects.get_project(run.project_id)
+        project = None
+        if run.repository_url is None and run.candidate_tests:
+            try:
+                project = projects.get_project(run.project_id)
+            except ProjectNotFoundError:
+                project = None
         diff = runs.get_test_patch(run_id, project)
     except RunNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Run or project not found") from exc
@@ -83,7 +91,12 @@ async def download_run_patch(
 ) -> Response:
     try:
         run = runs.get_run(run_id)
-        project = projects.get_project(run.project_id)
+        project = None
+        if run.repository_url is None and run.candidate_tests:
+            try:
+                project = projects.get_project(run.project_id)
+            except ProjectNotFoundError:
+                project = None
         patch = runs.get_test_patch(run_id, project)
     except RunNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Run or project not found") from exc

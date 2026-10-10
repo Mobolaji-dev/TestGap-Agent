@@ -22,3 +22,4 @@ class ProjectRecord(BaseModel):
     name: str
     path: Path
     test_framework: str | None = None
+    repository_url: str | None = None

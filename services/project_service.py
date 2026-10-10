@@ -20,6 +20,9 @@ class ProjectService:
             raise ProjectNotFoundError(f"Project '{project_id}' is not configured")
         return project
 
+    def get_github_project(self, repository_url: str) -> ProjectRecord:
+        return self.repository.from_github_url(repository_url)
+
     @staticmethod
     def _to_response(record: ProjectRecord) -> ProjectResponse:
         ready = record.test_framework == "pytest"

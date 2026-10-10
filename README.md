@@ -4,7 +4,7 @@ TestGap Finder is an agent for finding high-priority Python test gaps and produc
 
 ## Current implementation slice
 
-The API supports configured project discovery, asynchronous run creation, run status, cancellation, and SSE events. The LangGraph workflow inspects the selected repository, runs a baseline pytest/coverage pass, ranks uncovered files, and drafts tests for the highest-ranked gap with the configured LiteLLM model. Candidate tests are returned for review but are not written into the selected repository or executed yet; repair and mutation verification remain planned.
+The API supports configured project discovery, asynchronous run creation, run status, cancellation, and SSE events. A run can use either a server-configured local project or a public GitHub HTTPS URL. The LangGraph workflow inspects the selected repository, runs a baseline pytest/coverage pass, ranks uncovered files, and drafts tests for the highest-ranked gap with the configured LiteLLM model. Candidate tests are returned for review but are not written into the selected repository or executed yet; repair and mutation verification remain planned.
 
 The backend uses the layering from `hammet-core` (routes → services → repositories) and the agent layout from `langgraph-wa-agent` (`state`, `nodes`, `prompts`, `graph`).
 Run records, baseline coverage details, ranked targets, and events are stored in SQLite at `.runs/testgap.sqlite3` by default; set `TESTGAP_RUN_DATABASE_PATH` to choose another location.
@@ -16,7 +16,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Set TESTGAP_REPOSITORY_PATH and LITELLM_API_KEY in .env.
+# Optionally set TESTGAP_REPOSITORY_PATH and set LITELLM_API_KEY in .env.
 # NEATLOGS_API_KEY is separate and enables trace export.
 uvicorn app.main:app --reload
 ```
@@ -26,7 +26,7 @@ Open `http://localhost:8000/docs` for the API schema. The frontend dev server at
 ## Frontend API
 
 - `GET /api/projects`
-- `POST /api/runs` with `{ "project_id": "...", "target_limit": 3, "repair_limit": 2, "verify_mutations": true }`
+- `POST /api/runs` with either `{ "project_id": "..." }` or `{ "repository_url": "https://github.com/owner/repository" }`, plus optional run settings.
 - `GET /api/runs/{run_id}`
 - `GET /api/runs/{run_id}/events` (SSE; accepts `?after=<event_id>`)
 - `POST /api/runs/{run_id}/cancel`
@@ -37,7 +37,11 @@ Run/event schemas are defined in `schemas/run.py`; project schemas are in `schem
 
 ## Current boundaries
 
-- Only a server-configured repository path can be selected; the browser cannot submit an arbitrary filesystem path.
+- Remote scans accept public GitHub HTTPS URLs only. Private repositories, other Git hosts, URL credentials, query strings, and fragments are rejected.
+- GitHub repository metadata is checked before cloning. The default clone timeout is 120 seconds and the default repository-size limit is 200 MB; configure these with `TESTGAP_REPOSITORY_CLONE_TIMEOUT_SECONDS` and `TESTGAP_REPOSITORY_MAX_SIZE_MB`.
+- Remote clones use shallow, blob-filtered Git and are removed after the run. The generated test-only patch is saved with the run so it remains downloadable after cleanup.
+- Scanning runs pytest from the submitted repository. Only scan repositories you trust; this MVP does not run jobs inside a separate OS/container sandbox.
+- The browser cannot submit an arbitrary filesystem path.
 - Baseline commands run with `shell=False`, bounded runtime, and bounded captured output.
 - Run results and events survive API restarts in the SQLite run repository.
 - Baseline commands run from a temporary copy of the configured project; the inspected checkout is not modified by this step.

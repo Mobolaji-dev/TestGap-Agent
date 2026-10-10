@@ -19,6 +19,9 @@ class RunRepository:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS runs (run_id TEXT PRIMARY KEY, payload TEXT NOT NULL)"
             )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS patches (run_id TEXT PRIMARY KEY, patch TEXT NOT NULL)"
+            )
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path, timeout=10)
@@ -59,6 +62,21 @@ class RunRepository:
                 "SELECT payload FROM runs WHERE run_id = ?", (run_id,)
             ).fetchone()
         return RunResponse.model_validate_json(row["payload"]) if row else None
+
+    def save_patch(self, run_id: str, patch: str) -> None:
+        with self._connection() as connection:
+            connection.execute(
+                "INSERT INTO patches (run_id, patch) VALUES (?, ?) "
+                "ON CONFLICT(run_id) DO UPDATE SET patch = excluded.patch",
+                (run_id, patch),
+            )
+
+    def get_patch(self, run_id: str) -> str | None:
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT patch FROM patches WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return row["patch"] if row else None
 
     def save(self, run: RunResponse) -> RunResponse:
         run.updated_at = datetime.now(UTC)

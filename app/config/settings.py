@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="TESTGAP_", env_file=".env", extra="ignore")
 
     repository_path: Path | None = Field(default=None)
+    repository_workspace_root: Path = Field(default=Path("/tmp/testgap-workspaces"))
+    repository_clone_timeout_seconds: int = Field(default=120, ge=10, le=600)
+    repository_max_size_mb: int = Field(default=200, ge=10, le=2000)
     run_timeout_seconds: int = Field(default=90, ge=5, le=600)
     run_database_path: Path = Field(default=Path(".runs/testgap.sqlite3"))
     litellm_api_key: SecretStr | None = Field(default=None, validation_alias="LITELLM_API_KEY")
