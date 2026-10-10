@@ -35,7 +35,7 @@ def run_baseline(state: TestGapState) -> dict:
         child_env = {
             "PATH": os.environ.get("PATH", ""),
             "HOME": temp_dir,
-            "PYTHONPATH": str(workspace),
+            "PYTHONPATH": os.pathsep.join((str(workspace), str(workspace / "src"))),
             "PYTHONDONTWRITEBYTECODE": "1",
         }
         if "SYSTEMROOT" in os.environ:

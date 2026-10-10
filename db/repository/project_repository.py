@@ -91,6 +91,7 @@ class ProjectRepository:
             raise RepositoryCloneError("Not enough free temporary disk space to clone this repository.")
         if destination.exists():
             raise RepositoryCloneError("The run workspace already exists.")
+        destination.parent.mkdir(parents=True, exist_ok=False)
 
         env = {
             "PATH": os.environ.get("PATH", os.defpath),

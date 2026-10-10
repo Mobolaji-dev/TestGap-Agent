@@ -43,7 +43,7 @@ class RunService:
             updated_at=now,
         )
         if project.repository_url:
-            project.path = settings.repository_workspace_root / run.run_id
+            project.path = settings.repository_workspace_root / run.run_id / project.name
         self.repository.create(run)
         self._event(run.run_id, "run.started", "queued", "Analysis queued.")
         run = self.get_run(run.run_id)
@@ -267,7 +267,7 @@ class RunService:
             self._event(run_id, "run.failed", "failed", "Analysis failed.", data={"error": str(exc)})
         finally:
             if project.repository_url:
-                shutil.rmtree(project.path, ignore_errors=True)
+                shutil.rmtree(project.path.parent, ignore_errors=True)
 
     def _event(
         self,
