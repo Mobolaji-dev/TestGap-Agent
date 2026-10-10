@@ -108,7 +108,7 @@ class ProjectRepository:
                 [
                     "git", "-c", "http.followRedirects=initial", "clone", "--depth=1",
                     "--filter=blob:none", "--single-branch", "--no-tags", "--quiet",
-                    repository.repository_url, str(destination),
+                    project.repository_url, str(destination),
                 ],
                 capture_output=True,
                 text=True,
