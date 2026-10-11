@@ -54,16 +54,6 @@ def _read_small_file(path: Path, limit: int) -> str:
         return ""
 
 
-def _test_style(root: Path) -> str:
-    for directory in (root / "tests", root / "test"):
-        if not directory.is_dir():
-            continue
-        for path in directory.glob("test_*.py"):
-            if path.is_file() and not path.is_symlink():
-                return _read_small_file(path, 3_000)
-    return ""
-
-
 def _candidate_test_path(root: Path, source_path: Path) -> str:
     test_dir = next(
         (name for name in ("tests", "test") if (root / name).is_dir()),
@@ -112,7 +102,6 @@ def write_tests(state: TestGapState) -> dict:
             target_path=relative_path,
             source=excerpt,
             uncovered_lines=target.get("uncovered_lines", []),
-            test_style=_test_style(root),
             project_rules=readme,
         )
         client = OpenAI(
