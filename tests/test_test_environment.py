@@ -15,6 +15,8 @@ def test_example_settings_uses_dummy_values_not_template_secrets(tmp_path):
         "DATABASE_URL=postgresql://real-looking-value\n"
         "SECRET_KEY=example-secret-value\n"
         "SUPABASE_URL=https://service.example.test\n"
+        "TESTGAP_RUN_TIMEOUT_SECONDS=15\n"
+        "TESTGAP_REPOSITORY_MAX_SIZE_MB=500\n"
     )
 
     env = _example_settings(tmp_path)
@@ -22,6 +24,8 @@ def test_example_settings_uses_dummy_values_not_template_secrets(tmp_path):
     assert env["DATABASE_URL"] == "postgresql+asyncpg://testgap:testgap@127.0.0.1:5432/testgap"
     assert env["SECRET_KEY"] == "testgap-placeholder-not-a-real-secret"
     assert env["SUPABASE_URL"] == "http://127.0.0.1"
+    assert env["TESTGAP_RUN_TIMEOUT_SECONDS"] == "90"
+    assert env["TESTGAP_REPOSITORY_MAX_SIZE_MB"] == "200"
     assert "example-secret-value" not in env.values()
 
 

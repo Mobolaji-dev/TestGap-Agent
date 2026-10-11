@@ -110,6 +110,13 @@ def _example_settings(root: Path) -> dict[str, str]:
             env[key] = "testgap-placeholder-not-a-real-secret"
         elif upper_key.endswith("_PORT"):
             env[key] = "5432"
+        elif upper_key.endswith(("_TIMEOUT", "_SECONDS", "_INTERVAL")):
+            # Keep dummy settings parseable by projects that expect integers.
+            env[key] = "90"
+        elif upper_key.endswith(("_SIZE_MB", "_MAX_SIZE_MB")):
+            env[key] = "200"
+        elif upper_key.endswith(("_LIMIT", "_COUNT", "_RETRIES", "_WORKERS")):
+            env[key] = "1"
         else:
             env[key] = "testgap-placeholder"
     return env
@@ -144,7 +151,7 @@ def prepare_test_environment(
             ).create(env_root)
             # Keep first-run dependency setup bounded even if the deployment's
             # general scan timeout is configured much higher.
-            setup_timeout = max(90, min(timeout_seconds, 120))
+            setup_timeout = max(300, min(timeout_seconds, 600))
             install = subprocess.run(
                 [
                     str(runner), "-m", "pip", "install", "--disable-pip-version-check",
