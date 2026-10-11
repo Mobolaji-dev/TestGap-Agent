@@ -3,10 +3,12 @@ import json
 import os
 import shutil
 import subprocess
+import tarfile
 import tempfile
 from pathlib import Path
+from pathlib import PurePosixPath
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 
 from app.config.settings import settings
@@ -165,7 +167,14 @@ class ProjectRepository:
         except OSError as exc:
             shutil.rmtree(destination, ignore_errors=True)
             if isinstance(exc, FileNotFoundError):
-                raise RepositoryCloneError("Git is not installed on the backend host.") from exc
+                return ProjectRepository._download_public_archive(
+                    owner=owner,
+                    repository=repository,
+                    default_branch=metadata.get("default_branch"),
+                    destination=destination,
+                    max_bytes=max_bytes,
+                    timeout=settings.repository_clone_timeout_seconds,
+                )
             raise RepositoryCloneError("Could not start the Git clone process.") from exc
 
         if result.returncode != 0:
@@ -197,6 +206,78 @@ class ProjectRepository:
                         f"Checked-out files exceed the {settings.repository_max_size_mb} MB scan limit."
                     )
 
+        return destination
+
+    @staticmethod
+    def _download_public_archive(
+        *,
+        owner: str,
+        repository: str,
+        default_branch: object,
+        destination: Path,
+        max_bytes: int,
+        timeout: int,
+    ) -> Path:
+        """Download a public GitHub source archive when the host has no Git binary."""
+        if not isinstance(default_branch, str) or not default_branch:
+            raise RepositoryCloneError("Git is unavailable and GitHub did not provide a default branch.")
+
+        archive_url = (
+            f"https://api.github.com/repos/{owner}/{repository}/tarball/"
+            f"{quote(default_branch, safe='')}"
+        )
+        request = Request(
+            archive_url,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "testgap-agent"},
+        )
+        destination.mkdir(parents=True, exist_ok=False)
+        extracted_bytes = 0
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                with tarfile.open(fileobj=response, mode="r|gz") as archive:
+                    for member in archive:
+                        # GitHub archives wrap all repository entries in one root directory.
+                        parts = PurePosixPath(member.name).parts
+                        if len(parts) < 2 or parts[0] in ("", ".", ".."):
+                            continue
+                        relative = PurePosixPath(*parts[1:])
+                        if relative.is_absolute() or any(part in ("", ".", "..") for part in relative.parts):
+                            continue
+                        target = destination.joinpath(*relative.parts)
+                        try:
+                            target.resolve().relative_to(destination.resolve())
+                        except ValueError:
+                            continue
+
+                        if member.isdir():
+                            target.mkdir(parents=True, exist_ok=True)
+                            continue
+                        # Do not recreate links or special files from an untrusted archive.
+                        if not member.isfile():
+                            continue
+                        if member.size < 0 or extracted_bytes + member.size > max_bytes:
+                            raise RepositoryCloneError(
+                                f"Checked-out files exceed the {settings.repository_max_size_mb} MB scan limit."
+                            )
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        source = archive.extractfile(member)
+                        if source is None:
+                            continue
+                        with source, target.open("wb") as output:
+                            shutil.copyfileobj(source, output, length=1024 * 1024)
+                        extracted_bytes += member.size
+        except RepositoryCloneError:
+            shutil.rmtree(destination, ignore_errors=True)
+            raise
+        except (HTTPError, URLError, TimeoutError, OSError, tarfile.TarError) as exc:
+            shutil.rmtree(destination, ignore_errors=True)
+            raise RepositoryCloneError(
+                "Git is unavailable and GitHub could not provide a source archive for this public repository."
+            ) from exc
+
+        if extracted_bytes == 0:
+            shutil.rmtree(destination, ignore_errors=True)
+            raise RepositoryCloneError("GitHub returned an empty repository archive.")
         return destination
 
     def get_project(self, project_id: str) -> ProjectRecord | None:
