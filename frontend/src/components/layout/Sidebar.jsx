@@ -54,6 +54,7 @@ export default function Sidebar() {
         <div className="sidebar-content">
           {/* Wordmark */}
           <div className="sidebar-brand">
+            <img src="/testgap-logo.png" alt="TestGap logo" className="sidebar-logo" />
             <span className="text-caption-lg">TestGap</span>
           </div>
 
@@ -119,6 +120,7 @@ export default function Sidebar() {
           >
             {/* Wordmark */}
             <div className="sidebar-brand">
+              <img src="/testgap-logo.png" alt="TestGap logo" className="sidebar-logo" />
               <span className="text-caption-lg">TestGap</span>
             </div>
 

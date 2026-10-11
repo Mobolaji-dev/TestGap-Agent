@@ -36,8 +36,18 @@
 }
 
 .sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   padding: var(--spacing-sm) 0;
   color: var(--ink);
+}
+
+.sidebar-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: contain;
 }
 
 .sidebar-nav {
