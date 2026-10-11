@@ -19,6 +19,9 @@ class RepositoryCloneError(Exception):
     """A public repository could not be safely prepared for a scan."""
 
 
+_MAX_REPOSITORY_CLONE_SECONDS = 180
+
+
 class ProjectRepository:
     """Read-only registry of projects the agent is allowed to inspect."""
 
@@ -110,6 +113,7 @@ class ProjectRepository:
         if not isinstance(reported_size_kb, int) or reported_size_kb < 0:
             raise RepositoryCloneError("GitHub did not return a valid repository size.")
         max_bytes = settings.repository_max_size_mb * 1024 * 1024
+        clone_timeout = min(settings.repository_clone_timeout_seconds, _MAX_REPOSITORY_CLONE_SECONDS)
         if reported_size_kb * 1024 > max_bytes:
             raise RepositoryCloneError(
                 f"Repository exceeds the {settings.repository_max_size_mb} MB scan limit."
@@ -156,7 +160,7 @@ class ProjectRepository:
                 ],
                 capture_output=True,
                 text=True,
-                timeout=settings.repository_clone_timeout_seconds,
+                timeout=clone_timeout,
                 check=False,
                 shell=False,
                 env=env,
@@ -173,7 +177,7 @@ class ProjectRepository:
                     default_branch=metadata.get("default_branch"),
                     destination=destination,
                     max_bytes=max_bytes,
-                    timeout=settings.repository_clone_timeout_seconds,
+                    timeout=clone_timeout,
                 )
             raise RepositoryCloneError("Could not start the Git clone process.") from exc
 

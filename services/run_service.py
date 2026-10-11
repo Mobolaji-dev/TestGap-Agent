@@ -157,9 +157,13 @@ class RunService:
                     run_id,
                     "step.started",
                     "running",
-                    "Cloning public GitHub repository.",
+                    "Checking GitHub and creating a shallow clone (up to 180 seconds).",
                     step="clone",
-                    data={"repository_url": project.repository_url},
+                    data={
+                        "repository_url": project.repository_url,
+                        "phase": "github_metadata_and_shallow_clone",
+                        "timeout_seconds": min(settings.repository_clone_timeout_seconds, 180),
+                    },
                 )
                 await asyncio.to_thread(
                     ProjectRepository.clone_repository,
