@@ -154,7 +154,7 @@ def prepare_test_environment(
     except subprocess.TimeoutExpired as exc:
         shutil.rmtree(env_root, ignore_errors=True)
         raise TestEnvironmentError("Installing repository test dependencies exceeded the setup time limit.") from exc
-    except (OSError, venv.Error) as exc:
+    except (OSError, subprocess.CalledProcessError) as exc:
         shutil.rmtree(env_root, ignore_errors=True)
         raise TestEnvironmentError("Could not create the disposable Python test environment.") from exc
 
