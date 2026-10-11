@@ -1,5 +1,6 @@
 from agent.nodes import verify_tests as verification
 from agent.nodes.verify_tests import _verification_diagnostic
+from schemas.run import TestCandidate as RunTestCandidate
 
 
 def test_verification_diagnostic_captures_failure_and_scrubs_workspace(tmp_path):
@@ -78,3 +79,18 @@ def test_verification_reports_failed_model_repair_attempt(tmp_path, monkeypatch)
     assert rejected["repair_status"] == "failed"
     assert "Model repair failed" in rejected["verification_summary"]
     assert rejected["repair_failure"] == "model repair returned no result"
+
+
+def test_api_candidate_schema_preserves_repair_diagnostics():
+    candidate = RunTestCandidate.model_validate({
+        "target_path": "app/api/auth.py",
+        "test_path": "tests/test_auth_testgap.py",
+        "content": "def test_route():\n    assert True\n",
+        "model": "claude-haiku",
+        "repair_attempts": 1,
+        "repair_status": "failed",
+        "repair_failure": "model request failed (APITimeoutError)",
+    })
+
+    assert candidate.repair_status == "failed"
+    assert candidate.repair_failure == "model request failed (APITimeoutError)"
