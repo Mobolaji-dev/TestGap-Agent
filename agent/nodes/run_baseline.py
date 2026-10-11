@@ -59,6 +59,7 @@ def run_baseline(state: TestGapState) -> dict:
         message="Preparing the isolated test environment and running the existing pytest suite.",
     )
     root = Path(state["project_path"]).resolve(strict=True)
+    baseline_timeout = max(5, min(int(state.get("run_timeout_seconds", 90)), 180))
     ignored = {
         ".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache",
         ".aws", ".ssh", ".config", ".coverage",
@@ -85,14 +86,35 @@ def run_baseline(state: TestGapState) -> dict:
         runner = Path(sys.executable)
         if state.get("repository_url"):
             try:
+                report_progress(
+                    state,
+                    step="baseline",
+                    event_type="step.progress",
+                    message="Installing the repository's declared test dependencies (up to 120 seconds on a cold run).",
+                    data={"phase": "dependency_setup", "timeout_seconds": 120},
+                )
                 runner, child_env, test_environment = prepare_test_environment(
                     root,
-                    timeout_seconds=state.get("run_timeout_seconds", 90),
+                    timeout_seconds=baseline_timeout,
+                )
+                report_progress(
+                    state,
+                    step="baseline",
+                    event_type="step.progress",
+                    message=f"Dependency setup finished; running pytest baseline (up to {baseline_timeout} seconds).",
+                    data={"phase": "pytest", "timeout_seconds": baseline_timeout},
                 )
             except TestEnvironmentError as exc:
                 setup_warning = str(exc)
                 test_environment = {"status": "failed", "reason": setup_warning}
                 child_env = fallback_test_environment(root, Path(temp_dir))
+                report_progress(
+                    state,
+                    step="baseline",
+                    event_type="step.progress",
+                    message="Dependency setup failed; trying pytest with scanner-provided packages and project placeholders.",
+                    data={"phase": "environment_fallback"},
+                )
         else:
             child_env = {
                 "PATH": os.environ.get("PATH", ""),
@@ -112,7 +134,7 @@ def run_baseline(state: TestGapState) -> dict:
                 cwd=workspace,
                 stdout=stdout_file,
                 stderr=stderr_file,
-                timeout=state.get("run_timeout_seconds", 90),
+                timeout=baseline_timeout,
                 check=False,
                 shell=False,
                 env=child_env,
@@ -134,7 +156,7 @@ def run_baseline(state: TestGapState) -> dict:
                 cwd=workspace,
                 capture_output=True,
                 text=True,
-                timeout=state.get("run_timeout_seconds", 90),
+                timeout=baseline_timeout,
                 check=False,
                 shell=False,
                 env=child_env,

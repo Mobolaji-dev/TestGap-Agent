@@ -142,7 +142,9 @@ def prepare_test_environment(
                 clear=True,
                 symlinks=(os.name != "nt"),
             ).create(env_root)
-            setup_timeout = max(90, min(timeout_seconds, 300))
+            # Keep first-run dependency setup bounded even if the deployment's
+            # general scan timeout is configured much higher.
+            setup_timeout = max(90, min(timeout_seconds, 120))
             install = subprocess.run(
                 [
                     str(runner), "-m", "pip", "install", "--disable-pip-version-check",
