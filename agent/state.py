@@ -16,6 +16,7 @@ class TestGapState(TypedDict, total=False):
     project_path: str
     repository_url: str | None
     target_limit: int
+    repair_limit: int
     run_timeout_seconds: int
     events: list[AgentEvent]
     warnings: list[str]

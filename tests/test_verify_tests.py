@@ -1,3 +1,4 @@
+from agent.nodes import verify_tests as verification
 from agent.nodes.verify_tests import _verification_diagnostic
 
 
@@ -12,3 +13,38 @@ def test_verification_diagnostic_captures_failure_and_scrubs_workspace(tmp_path)
     assert "ModuleNotFoundError: app.services.auth" in diagnostic
     assert str(tmp_path) not in diagnostic
     assert "<temporary-run-dir>/copy/tests/test_generated.py" in diagnostic
+
+
+def test_verification_repairs_candidate_within_requested_budget(tmp_path, monkeypatch):
+    attempts = iter([
+        (False, "pytest failed", "AssertionError: expected 200, got 404", None),
+        (True, None, None, 66.7),
+    ])
+    monkeypatch.setattr(verification, "_run_candidate", lambda *args, **kwargs: next(attempts))
+    monkeypatch.setattr(
+        verification,
+        "_repair_candidate",
+        lambda state, item, diagnostic, attempt: {
+            **item,
+            "content": "def test_repaired():\n    assert True\n",
+        },
+    )
+    candidate = {
+        "target_path": "app/api/auth.py",
+        "test_path": "tests/test_auth_testgap.py",
+        "content": "def test_original():\n    assert False\n",
+        "model": "claude-haiku",
+    }
+
+    result = verification.verify_tests({
+        "project_path": str(tmp_path),
+        "generated_tests": [candidate],
+        "repair_limit": 1,
+        "baseline_summary": {"test_environment": {"status": "ready"}},
+    })
+
+    assert result["tests_added"] == 1
+    assert result["coverage_after_pct"] == 66.7
+    assert result["generated_tests"][0]["verification_status"] == "passed"
+    assert result["generated_tests"][0]["repair_attempts"] == 1
+    assert result["warnings"] == []
