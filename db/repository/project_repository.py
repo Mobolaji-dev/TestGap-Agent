@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -50,6 +51,38 @@ class ProjectRepository:
         )
 
     @staticmethod
+    def _workspace_candidates() -> list[Path]:
+        candidates = (
+            settings.repository_workspace_root.expanduser(),
+            Path.cwd() / ".tmp" / "testgap-workspaces",
+            Path("/var/tmp/testgap-workspaces"),
+            Path("/tmp/testgap-workspaces"),
+        )
+        roots: list[Path] = []
+        for candidate in candidates:
+            resolved = candidate.resolve()
+            if resolved not in roots:
+                roots.append(resolved)
+        return roots
+
+    @classmethod
+    def get_workspace_root(cls) -> Path:
+        """Choose the writable configured/temp volume with the most free space."""
+        available: list[tuple[int, Path]] = []
+        for candidate in cls._workspace_candidates():
+            try:
+                candidate.mkdir(parents=True, exist_ok=True)
+                # Test actual write permission, not just the mode bits.
+                with tempfile.NamedTemporaryFile(prefix=".testgap-probe-", dir=candidate):
+                    pass
+                available.append((shutil.disk_usage(candidate).free, candidate))
+            except OSError:
+                continue
+        if not available:
+            raise RepositoryCloneError("No writable temporary workspace is available for repository cloning.")
+        return max(available, key=lambda item: item[0])[1]
+
+    @staticmethod
     def clone_repository(repository_url: str, destination: Path) -> Path:
         """Clone one public GitHub repository with bounded history and disk use."""
         project = ProjectRepository.from_github_url(repository_url)
@@ -81,14 +114,22 @@ class ProjectRepository:
             )
 
         destination = destination.resolve()
-        workspace_root = settings.repository_workspace_root.expanduser().resolve()
+        workspace_root = destination.parent.parent.resolve()
+        if workspace_root not in ProjectRepository._workspace_candidates():
+            raise RepositoryCloneError("Invalid temporary workspace destination.")
         try:
             destination.relative_to(workspace_root)
         except ValueError as exc:
             raise RepositoryCloneError("Invalid temporary workspace destination.") from exc
         workspace_root.mkdir(parents=True, exist_ok=True)
-        if shutil.disk_usage(workspace_root).free < max(128 * 1024 * 1024, reported_size_kb * 1024):
-            raise RepositoryCloneError("Not enough free temporary disk space to clone this repository.")
+        # GitHub's repository size includes history and may overstate a depth-1,
+        # blob-filtered checkout. Keep a modest safety floor, then enforce the
+        # actual checkout-size limit after removing .git.
+        minimum_free_bytes = max(16 * 1024 * 1024, min(reported_size_kb * 1024 // 8, max_bytes))
+        if shutil.disk_usage(workspace_root).free < minimum_free_bytes:
+            raise RepositoryCloneError(
+                "No writable temporary volume has enough free space for this shallow clone."
+            )
         if destination.exists():
             raise RepositoryCloneError("The run workspace already exists.")
         destination.parent.mkdir(parents=True, exist_ok=False)
@@ -133,6 +174,10 @@ class ProjectRepository:
                 "GitHub clone failed. Confirm the repository is public and the URL is correct."
             )
 
+        # The analysis does not use Git history; remove it before walking files
+        # or running coverage so the limited temporary volume is reclaimed early.
+        shutil.rmtree(destination / ".git", ignore_errors=True)
+
         actual_bytes = 0
         for current, directories, files in os.walk(destination, followlinks=False):
             directories[:] = [
@@ -152,7 +197,6 @@ class ProjectRepository:
                         f"Checked-out files exceed the {settings.repository_max_size_mb} MB scan limit."
                     )
 
-        shutil.rmtree(destination / ".git", ignore_errors=True)
         return destination
 
     def get_project(self, project_id: str) -> ProjectRecord | None:

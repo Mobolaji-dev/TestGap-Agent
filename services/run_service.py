@@ -42,8 +42,6 @@ class RunService:
             created_at=now,
             updated_at=now,
         )
-        if project.repository_url:
-            project.path = settings.repository_workspace_root / run.run_id / project.name
         self.repository.create(run)
         self._event(run.run_id, "run.started", "queued", "Analysis queued.")
         run = self.get_run(run.run_id)
@@ -131,6 +129,8 @@ class RunService:
         started = time.perf_counter()
         try:
             if project.repository_url:
+                workspace_root = ProjectRepository.get_workspace_root()
+                project.path = workspace_root / run.run_id / project.name
                 self._event(
                     run_id,
                     "step.started",
