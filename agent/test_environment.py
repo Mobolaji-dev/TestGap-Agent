@@ -106,7 +106,7 @@ def _example_settings(root: Path) -> dict[str, str]:
         upper_key = key.upper()
         if upper_key == "DATABASE_URL":
             env[key] = "postgresql+asyncpg://testgap:testgap@127.0.0.1:5432/testgap"
-        elif upper_key.endswith(("_URL", "_URI")):
+        elif upper_key.endswith(("_URL", "_URI", "_ENDPOINT")):
             env[key] = "http://127.0.0.1"
         elif any(token in upper_key for token in ("SECRET", "_KEY", "TOKEN", "PASSWORD")):
             env[key] = "testgap-placeholder-not-a-real-secret"
