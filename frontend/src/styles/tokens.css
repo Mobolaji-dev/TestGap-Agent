@@ -1,0 +1,190 @@
+/* AgentFlow Design Tokens */
+
+:root {
+  /* Colors */
+  --primary: #818cf8;
+  --primary-bright: #a5b4fc;
+  --primary-deep: #6b72f0;
+  --on-primary: #ffffff;
+  --ink: #ffffff;
+  --ink-soft: #a0a7b8;
+  --on-ink: #0a0b0d;
+  --canvas: #0a0b0d;
+  --paper: #0d0f14;
+  --cloud: #111318;
+  --hairline: #20232b;
+  --hairline-strong: #393d47;
+  --link: #a5b4fc;
+  --link-pressed: #818cf8;
+  --success: #34d399;
+  --accent-cyan: #22d3ee;
+  --danger: #f87171;
+  --warning: #fbbf24;
+
+  /* Typography */
+  --display-xl: 48px 600 1.2 / 1 ui-sans-serif;
+  --heading-lg: 16px 500 1.4 / 1 ui-sans-serif;
+  --body-lg: 16px 400 1.5 / 1 ui-sans-serif;
+  --body-md: 14px 500 1.5 / 1 ui-sans-serif;
+  --body-sm: 13px 400 1.6 / 1 ui-sans-serif;
+  --caption-lg: 11px 600 1.5 / 0.8px ui-sans-serif;
+  --caption-md: 10px 600 1.5 / 0.5px ui-sans-serif;
+  --caption-sm: 9px 400 1.5 / 1 ui-sans-serif;
+  --button-md: 13px 500 1 / 1px ui-sans-serif;
+  --code-md: 13px 400 1.5 / 1 ui-monospace;
+
+  /* Rounded */
+  --rounded-none: 0px;
+  --rounded-sm: 4px;
+  --rounded-md: 8px;
+  --rounded-lg: 10px;
+  --rounded-xl: 12px;
+  --rounded-pill: 9999px;
+
+  /* Spacing */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  --spacing-xxxl: 64px;
+  --spacing-section: 80px;
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 2000ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Grid pattern background on canvas */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: linear-gradient(
+      0deg,
+      rgba(32, 35, 43, 0.15) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(32, 35, 43, 0.15) 1px,
+      transparent 1px
+    );
+  background-size: 20px 20px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Typography utility classes */
+.text-display-xl {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-heading-lg {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-body-lg {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-body-md {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-body-sm {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-caption-lg {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-caption-md {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-caption-sm {
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 1.5;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-button-md {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.text-code-md {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono",
+    Menlo, monospace;
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

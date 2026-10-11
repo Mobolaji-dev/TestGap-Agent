@@ -1,0 +1,108 @@
+/* ProjectCard component styles */
+
+.project-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--cloud);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.project-card:hover:not(.project-card-disabled) {
+  background-color: var(--paper);
+  border-color: var(--hairline-strong);
+}
+
+.project-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Disabled state (not ready) */
+.project-card-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.project-card-disabled:hover {
+  background-color: var(--cloud);
+  border-color: var(--hairline);
+}
+
+/* Selected state */
+.project-card-selected {
+  border: 1px solid var(--hairline-strong);
+  background-color: var(--paper);
+}
+
+/* Check icon in selected state */
+.project-card-check {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--success);
+}
+
+/* Card content */
+.project-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.project-card-name {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.project-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.project-card-path {
+  color: var(--ink-soft);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono",
+    Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.project-card-badge {
+  margin-top: var(--spacing-xs);
+}
+
+/* Warning message */
+.project-card-warning {
+  color: var(--warning);
+  margin-top: var(--spacing-xs);
+  line-height: 1.6;
+}
+
+/* Touch target sizing */
+@media (max-width: 768px) {
+  .project-card {
+    min-height: 140px;
+    padding: var(--spacing-lg);
+  }
+}

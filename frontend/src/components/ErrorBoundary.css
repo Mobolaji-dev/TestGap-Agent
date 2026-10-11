@@ -1,0 +1,103 @@
+/* ErrorBoundary component styles */
+
+.error-boundary {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+}
+
+.error-boundary-container {
+  max-width: 600px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-xxl);
+  background-color: var(--cloud);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+}
+
+.error-boundary-heading {
+  margin: 0;
+  color: var(--danger);
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.error-boundary-message {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.error-boundary-details {
+  text-align: left;
+  margin: var(--spacing-lg) 0 0 0;
+  padding: var(--spacing-md);
+  background-color: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+}
+
+.error-boundary-details summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  user-select: none;
+}
+
+.error-boundary-details summary:hover {
+  color: var(--ink);
+}
+
+.error-boundary-stack {
+  margin: var(--spacing-md) 0 0 0;
+  padding: var(--spacing-md);
+  background-color: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-sm);
+  color: var(--ink-soft);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono",
+    Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  text-align: left;
+}
+
+.error-boundary-reload-button {
+  margin-top: var(--spacing-lg);
+  padding: 12px 24px;
+  min-height: 44px;
+  background-color: var(--cloud);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.error-boundary-reload-button:hover {
+  background-color: var(--paper);
+  border-color: var(--hairline-strong);
+}
+
+.error-boundary-reload-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

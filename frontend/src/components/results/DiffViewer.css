@@ -1,0 +1,134 @@
+/* DiffViewer component styles */
+
+.diff-viewer-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.diff-actions-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.diff-buttons-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.diff-action-button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background-color: var(--cloud);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.diff-action-button:hover:not(:disabled) {
+  background-color: var(--paper);
+  border-color: var(--hairline-strong);
+}
+
+.diff-action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.diff-action-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.diff-disclaimer-note {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.diff-error-panel {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--cloud);
+  border: 1px solid var(--danger);
+  border-radius: var(--rounded-md);
+}
+
+.diff-error-text {
+  margin: 0;
+  color: var(--danger);
+}
+
+.diff-preview-container {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+  overflow: hidden;
+}
+
+.diff-preview-header {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: var(--cloud);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.diff-preview-label {
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.diff-pre {
+  margin: 0;
+  padding: var(--spacing-md);
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.diff-line {
+  min-height: 1.5em;
+}
+
+.diff-line-normal {
+  color: var(--ink);
+}
+
+.diff-line-hunk {
+  color: var(--accent-cyan);
+  font-weight: 500;
+}
+
+.diff-line-added {
+  color: var(--success);
+}
+
+.diff-line-removed {
+  color: var(--danger);
+}
+
+.diff-line-meta {
+  color: var(--ink-soft);
+}
+
+.diff-empty-text {
+  color: var(--ink-soft);
+}

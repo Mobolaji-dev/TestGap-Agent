@@ -1,0 +1,26 @@
+/* RepoInput component styles */
+
+.repo-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.repo-input-label {
+  color: var(--ink);
+}
+
+.form-input-invalid {
+  border-color: var(--danger) !important;
+}
+
+.repo-helper {
+  margin: 0;
+  padding-left: 0;
+  color: var(--ink-soft);
+}
+
+.repo-confirm {
+  margin: 0;
+  color: var(--success);
+}

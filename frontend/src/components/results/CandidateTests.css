@@ -1,0 +1,151 @@
+/* CandidateTests component styles */
+
+.candidate-tests-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.candidate-tests-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.candidate-title {
+  margin: 0;
+  color: var(--ink);
+}
+
+.candidate-disclaimer {
+  margin: 0;
+  color: var(--warning);
+}
+
+.candidate-tests-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.candidate-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--cloud);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+}
+
+.candidate-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.candidate-paths {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-width: 240px;
+}
+
+.candidate-path-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.candidate-path-label {
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+
+.candidate-path-value {
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.candidate-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.draft-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background-color: var(--paper);
+  border: 1px solid var(--warning);
+  border-radius: var(--rounded-sm);
+  color: var(--warning);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.candidate-model {
+  color: var(--ink-soft);
+}
+
+.candidate-model .text-code-md {
+  color: var(--ink);
+}
+
+.copy-button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.copy-button:hover {
+  background-color: var(--cloud);
+  border-color: var(--hairline-strong);
+}
+
+.copy-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.candidate-code-container {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  overflow-x: auto;
+}
+
+.candidate-code-pre {
+  margin: 0;
+  padding: var(--spacing-md);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.candidate-code-pre code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
