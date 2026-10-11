@@ -104,7 +104,10 @@ def _example_settings(root: Path) -> dict[str, str]:
         if not separator or not _ENV_KEY.fullmatch(key):
             continue
         upper_key = key.upper()
-        if upper_key == "DATABASE_URL":
+        if upper_key == "NEATLOGS_API_KEY":
+            # Do not activate a background exporter with a dummy credential.
+            continue
+        elif upper_key == "DATABASE_URL":
             env[key] = "postgresql+asyncpg://testgap:testgap@127.0.0.1:5432/testgap"
         elif upper_key.endswith(("_URL", "_URI", "_ENDPOINT")):
             env[key] = "http://127.0.0.1"

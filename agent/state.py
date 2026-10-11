@@ -11,6 +11,8 @@ class AgentEvent(TypedDict, total=False):
 
 
 class TestGapState(TypedDict, total=False):
+    __test__ = False
+
     run_id: str
     project_id: str
     project_path: str

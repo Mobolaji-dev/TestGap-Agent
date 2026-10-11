@@ -19,6 +19,7 @@ def test_example_settings_uses_dummy_values_not_template_secrets(tmp_path):
         "NEATLOGS_ENDPOINT=https://ingest.neatlogs.com\n"
         "TESTGAP_RUN_TIMEOUT_SECONDS=15\n"
         "TESTGAP_REPOSITORY_MAX_SIZE_MB=500\n"
+        "NEATLOGS_API_KEY=example-telemetry-key\n"
     )
 
     env = _example_settings(tmp_path)
@@ -29,7 +30,9 @@ def test_example_settings_uses_dummy_values_not_template_secrets(tmp_path):
     assert env["NEATLOGS_ENDPOINT"] == "http://127.0.0.1"
     assert env["TESTGAP_RUN_TIMEOUT_SECONDS"] == "90"
     assert env["TESTGAP_REPOSITORY_MAX_SIZE_MB"] == "200"
+    assert "NEATLOGS_API_KEY" not in env
     assert "example-secret-value" not in env.values()
+    assert "example-telemetry-key" not in env.values()
 
 
 def test_dependency_setup_timeout_has_five_minute_minimum_and_ten_minute_cap():
