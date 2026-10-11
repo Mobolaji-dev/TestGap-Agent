@@ -29,10 +29,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    allow_origin_regex=r"https://.*\.pxxl\.click",
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
 
 app.include_router(projects_router, prefix=settings.api_prefix)
 app.include_router(runs_router, prefix=settings.api_prefix)

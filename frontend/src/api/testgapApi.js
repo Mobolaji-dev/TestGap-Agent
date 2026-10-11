@@ -1,4 +1,21 @@
-const BACKEND_URL = import.meta.env.VITE_API_BASE_URL;
+function resolveBackendUrl() {
+  const configured = import.meta.env.VITE_API_BASE_URL;
+  if (configured && configured.trim()) {
+    return configured.trim().replace(/\/+$/, "");
+  }
+  if (typeof window !== "undefined" && window.location) {
+    if (window.location.hostname.includes("pxxl.click")) {
+      return "https://testgap-agent.pxxl.click";
+    }
+    if (window.location.hostname.includes("vercel.app")) {
+      return "https://testgap-agent.pxxl.click";
+    }
+  }
+  return "";
+}
+
+const BACKEND_URL = resolveBackendUrl();
+
 
 /**
  * Start a test scan run from a GitHub repository URL.

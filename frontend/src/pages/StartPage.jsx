@@ -218,7 +218,12 @@ export default function StartPage() {
     } catch (err) {
       if (err.status) {
         if (err.status === 404) {
-          setSubmitError("The backend could not find that repository.");
+          setSubmitError(
+            err.message && err.message !== "Request failed."
+              ? err.message
+              : "The requested project or repository was not found.",
+          );
+
         } else if (err.status >= 500 && err.status <= 599) {
           setSubmitError(
             "The backend had a problem starting this scan. Try again in a moment.",
