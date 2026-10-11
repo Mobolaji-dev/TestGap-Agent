@@ -18,6 +18,7 @@ const SSE_EVENT_TYPES = [
   "run.queued",
   "run.started",
   "step.started",
+  "step.progress",
   "step.completed",
   "step.failed",
   "warning",

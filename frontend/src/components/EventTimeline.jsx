@@ -5,6 +5,7 @@ const KNOWN_EVENT_TYPES = new Set([
   "run.queued",
   "run.started",
   "step.started",
+  "step.progress",
   "step.completed",
   "step.failed",
   "warning",

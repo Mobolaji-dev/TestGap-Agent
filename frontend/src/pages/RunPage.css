@@ -152,6 +152,139 @@
   text-align: right;
 }
 
+/* Visible workflow progress and live elapsed clock */
+.run-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background-color: var(--cloud);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+}
+
+.run-progress-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+}
+
+.run-progress-title {
+  margin: 0 0 var(--spacing-xs);
+  color: var(--ink);
+}
+
+.run-progress-current {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.run-progress-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 132px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  background: var(--canvas);
+}
+
+.run-progress-clock-label,
+.run-progress-clock-caption {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.run-progress-clock-value {
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.run-step-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.run-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  min-height: 72px;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  background: var(--canvas);
+}
+
+.run-step-marker {
+  display: inline-flex;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 50%;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.run-step-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.run-step-label {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.run-step-status,
+.run-step-detail {
+  overflow-wrap: anywhere;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.run-step-active {
+  border-color: var(--primary);
+}
+
+.run-step-active .run-step-marker {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.run-step-active .run-step-status {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.run-step-complete .run-step-marker {
+  border-color: var(--success, var(--primary));
+  color: var(--success, var(--primary));
+}
+
+.run-step-failed,
+.run-step-failed .run-step-status,
+.run-step-failed .run-step-marker {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* Warnings panel */
 .warnings-panel {
   display: flex;
@@ -370,5 +503,17 @@
   .header-left {
     grid-template-columns: 1fr;
     gap: var(--spacing-sm);
+  }
+
+  .run-progress-heading {
+    flex-direction: column;
+  }
+
+  .run-progress-clock {
+    align-items: flex-start;
+  }
+
+  .run-step-list {
+    grid-template-columns: 1fr;
   }
 }

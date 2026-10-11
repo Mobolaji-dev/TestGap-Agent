@@ -51,6 +51,101 @@ function getFailureMessage(run, events) {
   return run?.message || "Run encountered a failure.";
 }
 
+const WORKFLOW_STEPS = [
+  { id: "clone", label: "Clone repository" },
+  { id: "inspection", label: "Inspect repository" },
+  { id: "baseline", label: "Run baseline tests" },
+  { id: "ranking", label: "Rank test gaps" },
+  { id: "write_tests", label: "Draft tests" },
+  { id: "verify_tests", label: "Verify generated tests" },
+];
+
+function getWorkflowSteps(run, events) {
+  const hasCloneStep = run?.repository_url || events.some((event) => event.step === "clone");
+  const steps = WORKFLOW_STEPS.filter((step) => step.id !== "clone" || hasCloneStep);
+  const latestByStep = new Map();
+
+  for (const event of events) {
+    if (event.step && ["step.started", "step.progress", "step.completed", "step.failed"].includes(event.type)) {
+      latestByStep.set(event.step, event);
+    }
+  }
+
+  let activeStepId = run?.current_step || null;
+  if (!activeStepId) {
+    const activeEvent = [...events].reverse().find((event) =>
+      event.type === "step.started" || event.type === "step.progress",
+    );
+    activeStepId = activeEvent?.step || null;
+  }
+
+  const activeEvent = activeStepId ? latestByStep.get(activeStepId) : null;
+  const progressMessage = activeEvent?.message || run?.message || "Working on this step…";
+
+  return steps.map((step) => {
+    const event = latestByStep.get(step.id);
+    let status = "waiting";
+    if (event?.type === "step.failed") status = "failed";
+    else if (event?.type === "step.completed") {
+      status = event.status === "skipped" ? "skipped" : "complete";
+    } else if (step.id === activeStepId && !isTerminalStatus(run?.status)) status = "active";
+    else if (step.id === activeStepId && run?.status === "failed") status = "failed";
+    else if (isTerminalStatus(run?.status)) status = "skipped";
+
+    return {
+      ...step,
+      status,
+      detail: status === "active" ? progressMessage : event?.message || null,
+    };
+  });
+}
+
+function RunProgress({ run, events, elapsedTime }) {
+  const steps = getWorkflowSteps(run, events);
+  const activeStep = steps.find((step) => step.status === "active");
+  const isTerminal = isTerminalStatus(run?.status);
+  const runLabel = run?.status === "queued"
+    ? "Waiting to start"
+    : activeStep?.label || (isTerminal ? "Run finished" : "Preparing run");
+
+  return (
+    <section className="run-progress" aria-label="Run progress">
+      <div className="run-progress-heading">
+        <div>
+          <h2 className="text-heading-lg run-progress-title">What the agent is doing</h2>
+          <p className="run-progress-current" role="status" aria-live="polite">
+            {runLabel}{activeStep?.detail ? ` · ${activeStep.detail}` : ""}
+          </p>
+        </div>
+        <div className="run-progress-clock" aria-label={`Elapsed time ${elapsedTime}`}>
+          <span className="run-progress-clock-label">{isTerminal ? "Total time" : "Elapsed"}</span>
+          <span className="run-progress-clock-value" aria-live="off">{elapsedTime}</span>
+          {!isTerminal && <span className="run-progress-clock-caption">Live timer</span>}
+        </div>
+      </div>
+
+      <ol className="run-step-list" aria-label="Agent workflow steps">
+        {steps.map((step) => (
+          <li key={step.id} className={`run-step run-step-${step.status}`}>
+            <span className="run-step-marker" aria-hidden="true">
+              {step.status === "complete" ? "✓" : step.status === "failed" ? "!" : step.status === "active" ? "●" : "○"}
+            </span>
+            <div className="run-step-copy">
+              <span className="run-step-label">{step.label}</span>
+              <span className="run-step-status">
+                {step.status === "active" ? "In progress" : step.status === "complete" ? "Complete" : step.status === "failed" ? "Failed" : step.status === "skipped" ? "Skipped" : run?.status === "queued" ? "Waiting to start" : "Waiting"}
+              </span>
+              {step.status !== "active" && step.detail && (
+                <span className="run-step-detail">{step.detail}</span>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 /**
  * Live Run screen at /run/:runId
  */
@@ -63,16 +158,18 @@ export default function RunPage() {
   const [now, setNow] = useState(() => Date.now());
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(null);
+  const runStatus = run?.status;
+  const runCreatedAt = run?.created_at;
 
   // Active elapsed ticker
   useEffect(() => {
-    if (!run || isTerminalStatus(run.status)) return;
+    if (!runStatus || isTerminalStatus(runStatus)) return;
 
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 1000);
     return () => clearInterval(interval);
-  }, [run]);
+  }, [runStatus, runCreatedAt]);
 
   // Derived elapsed time: frozen when terminal, ticking when active
   const elapsedTime = !run
@@ -233,6 +330,8 @@ export default function RunPage() {
             )}
           </div>
         </section>
+
+        <RunProgress run={run} events={events} elapsedTime={elapsedTime} />
 
         {/* Warnings panel - shown only when run.warnings is non-empty */}
         {Array.isArray(run.warnings) && run.warnings.length > 0 && (
