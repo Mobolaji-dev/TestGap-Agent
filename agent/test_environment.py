@@ -122,6 +122,11 @@ def _example_settings(root: Path) -> dict[str, str]:
     return env
 
 
+def dependency_setup_timeout(timeout_seconds: int) -> int:
+    """Return the bounded timeout used when installing repository dependencies."""
+    return max(300, min(timeout_seconds, 600))
+
+
 def prepare_test_environment(
     root: Path,
     *,
@@ -151,7 +156,7 @@ def prepare_test_environment(
             ).create(env_root)
             # Keep first-run dependency setup bounded even if the deployment's
             # general scan timeout is configured much higher.
-            setup_timeout = max(300, min(timeout_seconds, 600))
+            setup_timeout = dependency_setup_timeout(timeout_seconds)
             install = subprocess.run(
                 [
                     str(runner), "-m", "pip", "install", "--disable-pip-version-check",

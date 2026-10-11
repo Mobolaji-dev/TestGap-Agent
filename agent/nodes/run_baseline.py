@@ -9,6 +9,7 @@ from pathlib import Path
 
 from agent.test_environment import (
     TestEnvironmentError,
+    dependency_setup_timeout,
     fallback_test_environment,
     prepare_test_environment,
 )
@@ -86,12 +87,13 @@ def run_baseline(state: TestGapState) -> dict:
         runner = Path(sys.executable)
         if state.get("repository_url"):
             try:
+                setup_timeout = dependency_setup_timeout(baseline_timeout)
                 report_progress(
                     state,
                     step="baseline",
                     event_type="step.progress",
-                    message="Installing the repository's declared test dependencies (up to 120 seconds on a cold run).",
-                    data={"phase": "dependency_setup", "timeout_seconds": 120},
+                    message=f"Installing the repository's declared test dependencies (up to {setup_timeout} seconds on a cold run).",
+                    data={"phase": "dependency_setup", "timeout_seconds": setup_timeout},
                 )
                 runner, child_env, test_environment = prepare_test_environment(
                     root,

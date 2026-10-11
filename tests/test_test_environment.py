@@ -6,6 +6,7 @@ from agent.test_environment import (
     TestEnvironmentError as _TestEnvironmentError,
     _example_settings,
     _requirements,
+    dependency_setup_timeout,
     prepare_test_environment,
 )
 
@@ -27,6 +28,12 @@ def test_example_settings_uses_dummy_values_not_template_secrets(tmp_path):
     assert env["TESTGAP_RUN_TIMEOUT_SECONDS"] == "90"
     assert env["TESTGAP_REPOSITORY_MAX_SIZE_MB"] == "200"
     assert "example-secret-value" not in env.values()
+
+
+def test_dependency_setup_timeout_has_five_minute_minimum_and_ten_minute_cap():
+    assert dependency_setup_timeout(90) == 300
+    assert dependency_setup_timeout(450) == 450
+    assert dependency_setup_timeout(900) == 600
 
 
 def test_requirements_rejects_direct_urls_and_pip_options(tmp_path):
