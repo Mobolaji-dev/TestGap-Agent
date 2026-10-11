@@ -7,7 +7,13 @@ from openai import OpenAI
 
 from agent.prompts.test_writer import build_test_writer_prompt, TEST_WRITER_SYSTEM_PROMPT
 from agent.state import TestGapState, report_progress
-from agent.candidate_metrics import test_case_count
+from agent.candidate_metrics import (
+    DraftValidationError,
+    extract_code_block,
+    normalize_test_draft,
+    test_case_count,
+    validate_test_draft,
+)
 from agent.telemetry import wrap_llm_client
 from app.config.settings import settings
 
@@ -17,54 +23,8 @@ _MAX_FOCUS_LINES = 12
 _MAX_GENERATED_TESTS = 12
 _MAX_GENERATED_LINES = 250
 
-
-class DraftValidationError(ValueError):
-    """A safe, user-facing reason a model draft was rejected before verification."""
-
-
-def _validate_test_draft(content: str) -> int:
-    try:
-        ast.parse(content)
-    except SyntaxError:
-        raise DraftValidationError("the model returned incomplete or invalid Python") from None
-    count = test_case_count(content)
-    if count == 0:
-        raise DraftValidationError("the draft contains no pytest test functions")
-    if count > _MAX_GENERATED_TESTS:
-        raise DraftValidationError(
-            f"the draft contains {count} test functions; the limit is {_MAX_GENERATED_TESTS}"
-        )
-    lines = len(content.splitlines())
-    if lines > _MAX_GENERATED_LINES:
-        raise DraftValidationError(
-            f"the draft contains {lines} lines; the limit is {_MAX_GENERATED_LINES}"
-        )
-    return count
-
-
-def _normalize_test_draft(content: str) -> tuple[str, bool]:
-    """Keep complete test functions when the provider truncates its final draft."""
-    try:
-        ast.parse(content)
-        return content, False
-    except SyntaxError:
-        lines = content.splitlines()
-        test_starts = [
-            index for index, line in enumerate(lines)
-            if line.startswith("def test_") or line.startswith("async def test_")
-        ]
-        best_prefix = ""
-        for boundary in test_starts[1:]:
-            prefix = "\n".join(lines[:boundary]).rstrip()
-            try:
-                ast.parse(prefix)
-            except SyntaxError:
-                continue
-            if test_case_count(prefix) > 0 and len(prefix) > len(best_prefix):
-                best_prefix = prefix
-        if best_prefix:
-            return best_prefix, True
-        raise DraftValidationError("the model returned incomplete or invalid Python") from None
+_validate_test_draft = validate_test_draft
+_normalize_test_draft = normalize_test_draft
 
 
 def _target_file(root: Path, value: str) -> tuple[Path, str]:
@@ -265,11 +225,7 @@ def write_tests(state: TestGapState) -> dict:
         duration_ms = int((perf_counter() - started) * 1000)
         choice = response.choices[0]
         finish_reason = getattr(choice, "finish_reason", None)
-        content = (choice.message.content or "").strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[-1]
-            if content.endswith("```"):
-                content = content[:-3].strip()
+        content = extract_code_block(choice.message.content or "")
         if not content:
             raise ValueError("The model returned an empty test draft")
         content, salvaged = _normalize_test_draft(content)

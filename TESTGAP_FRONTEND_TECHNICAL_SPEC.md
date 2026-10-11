@@ -5,7 +5,7 @@
 **Production frontend URL:** Pending frontend deployment  
 **Production API URL:** https://testgap-agent.onrender.com/
 
-This document describes the frontend integration contract for the current TestGap Finder backend. The backend currently supports project listing, scan creation and status/events, cancellation, and generated-test diff/patch retrieval. It does not yet execute generated tests, repair them, or run mutation verification; render those results as unavailable until those backend capabilities are implemented.
+This document describes the frontend integration contract for the current TestGap Finder backend. The backend supports project listing, scan creation and status/events, cancellation, generated-test verification, and test-only diff/patch retrieval. It does not yet repair failing candidates or run mutation verification; render those results as unavailable.
 
 ## 1. Product flow
 
@@ -14,7 +14,7 @@ This document describes the frontend integration contract for the current TestGa
 3. Create a run and show its `run_id` and current status.
 4. Stream run events over Server-Sent Events (SSE), while fetching the run resource for canonical state.
 5. Show baseline results, ranked targets, warnings, and any generated test draft.
-6. When a draft exists, preview its unified diff and let the user download the patch.
+6. Show each generated candidate's verification status and post-run coverage. Preview or download a diff only when its candidate passed the repository suite.
 
 ## 2. API Communication & Standard Headers
 
@@ -173,6 +173,9 @@ type TestCandidate = {
   test_path: string;
   content: string;
   model: string;
+  test_count: number;
+  verification_status: "pending" | "passed" | "failed";
+  verification_summary: string | null;
 };
 
 type RunMetrics = {
@@ -222,7 +225,7 @@ type RunResponse = {
 { "run_id": "run_abc123", "diff": "--- /dev/null\n+++ b/tests/test_example_testgap.py\n..." }
 ```
 
-`GET /api/runs/{run_id}/patch` returns the same unified diff as a downloadable `.patch` file. Both endpoints return `409` when no generated candidate is available. The diff is a preview/export artifact; it does not mean tests have been run or applied.
+`GET /api/runs/{run_id}/patch` returns the same unified diff as a downloadable `.patch` file. Both endpoints return `409` when there is no verified passing candidate. A passing candidate means the drafted file and the repository's existing pytest suite passed together in a disposable copy; the source checkout is not modified.
 
 ### SSE event envelope
 
@@ -315,8 +318,9 @@ Handle at minimum: `404` unknown project/run, `409` diff/patch unavailable, `422
 ## 8. Current implementation boundaries
 
 - The code exposes `/api` (not `/api/v1`).
-- The run graph currently performs baseline scanning and target ranking, and may draft a test for one target when the model is configured.
-- The generated test is not automatically written into the repository, executed, repaired, or mutation-verified yet.
-- `coverage_after_pct`, mutation counts, and `tests_added` are response fields but are not evidence that those capabilities ran. Render actual unset/default values honestly.
-- Production API URL is `https://test-gap-agent.vercel.app/`.
+- The run graph performs baseline scanning and target ranking, drafts a test for one target when the model is configured, then runs the candidate with the existing suite in a disposable copy.
+- A passing candidate is available as a test-only patch; a failed candidate remains visible with its verification summary and has no downloadable patch.
+- `coverage_after_pct` is populated only when post-candidate coverage was measured. Mutation counts stay at zero because mutation verification is not implemented yet.
+- Candidate execution uses a disposable filesystem copy and a reduced child-process environment, but it is not an OS/container security sandbox. Do not submit repositories you do not trust.
+- Production API URL is `https://testgap-agent.onrender.com/`.
 - Production frontend URL remains **Pending frontend deployment**.

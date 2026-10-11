@@ -1,7 +1,7 @@
 # cfo.ai model brief — TestGap Agent
 
-**Status:** prepared prompt; not yet entered into cfo.ai. The cfo.ai model/export
-and its screenshot still need to be created after the account is connected.
+**Status:** pending cfo.ai work. This prompt has not yet been entered into cfo.ai;
+the resulting model/export and screenshot still need to be created there.
 
 ## Prompt for Ari
 

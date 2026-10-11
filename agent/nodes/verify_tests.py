@@ -11,7 +11,13 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from time import perf_counter
 
-from agent.candidate_metrics import test_case_count
+from agent.candidate_metrics import (
+    DraftValidationError,
+    extract_code_block,
+    normalize_test_draft,
+    test_case_count,
+    validate_test_draft,
+)
 from agent.state import TestGapState, report_progress
 from agent.test_environment import (
     TestEnvironmentError,
@@ -175,7 +181,14 @@ def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt:
                     "content": (
                         "You are repairing a pytest module that failed in the target repository. "
                         "Use only the supplied test code and real pytest output. Return a complete "
-                        "corrected pytest file only. Do not change application code or invent routes/imports."
+                        "corrected pytest file only. Do not change application code or invent routes/imports.\n\n"
+                        "Mock and assertion rules:\n"
+                        "- If a test failed because an unconfigured MagicMock was compared to a concrete value "
+                        "(e.g. MagicMock vs string or status code), configure the mock attribute or return value "
+                        "explicitly before the assertion (e.g. mock_resp.status_code = 200, mock_resp.headers = {'ETag': '...'}).\n"
+                        "- When testing FastAPI/Starlette route handlers directly that accept a Response parameter, "
+                        "pass a real fastapi.Response() or ensure the passed mock object has headers = {} so headers can be set and checked.\n"
+                        "- Return only syntactically complete Python code. Do not include Markdown fences or explanation."
                     ),
                 },
                 {
@@ -183,11 +196,13 @@ def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt:
                     "content": (
                         f"Target: {item.get('target_path')}\nTest file: {item.get('test_path')}\n\n"
                         f"Actual target source:\n```python\n{target_source}\n```\n\n"
-                        f"Current candidate:\n```python\n{item['content']}\n```\n\n"
+                        f"Current candidate (broken):\n```python\n{item['content']}\n```\n\n"
                         f"Actual pytest failure output:\n```text\n{diagnostic[-_MAX_DIAGNOSTIC_CHARS:]}\n```\n\n"
-                        "Fix the candidate to test behavior that the target source actually implements. "
-                        "Do not weaken assertions just to hide failures. Preserve useful test intent, "
-                        "remove or rewrite cases whose assumptions are wrong, and return syntactically complete code."
+                        "Fix the candidate so all tests pass. "
+                        "Address the exact failure shown in the pytest output. "
+                        "If a mock attribute or header was unconfigured, configure it explicitly or use a real object (e.g. fastapi.Response()). "
+                        "Do not weaken assertions just to hide failures. Preserve useful test intent. "
+                        "Return syntactically complete Python only, with no Markdown fences or explanation."
                     ),
                 },
             ],
@@ -195,14 +210,20 @@ def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt:
             max_tokens=2_000,
         )
         choice = response.choices[0]
-        content = (choice.message.content or "").strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[-1]
-            if content.endswith("```"):
-                content = content[:-3].strip()
-        count = test_case_count(content)
-        if not content or count == 0 or len(content.splitlines()) > 100:
+        raw_content = choice.message.content or ""
+        content = extract_code_block(raw_content)
+        if not content:
+            return {**item, "_repair_error": "model returned an empty test draft"}
+
+        try:
+            content, salvaged = normalize_test_draft(content)
+            count = validate_test_draft(content, max_lines=150)
+        except DraftValidationError as exc:
+            return {**item, "_repair_error": f"model repair rejected: {exc}"}
+
+        if count == 0:
             return {**item, "_repair_error": "model returned no usable pytest module"}
+
         usage = getattr(response, "usage", None)
         return {
             **item,
@@ -220,6 +241,7 @@ def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt:
         error_type = type(exc).__name__
         logger.warning("Candidate test repair failed (%s)", error_type)
         return {**item, "_repair_error": f"model request failed ({error_type})"}
+
 
 
 def verify_tests(state: TestGapState) -> dict:

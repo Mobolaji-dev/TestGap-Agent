@@ -94,3 +94,146 @@ def test_api_candidate_schema_preserves_repair_diagnostics():
 
     assert candidate.repair_status == "failed"
     assert candidate.repair_failure == "model request failed (APITimeoutError)"
+
+
+def test_repair_candidate_parses_markdown_wrapped_code(tmp_path, monkeypatch):
+    target_file = tmp_path / "app.py"
+    target_file.write_text("def choose(x): return x > 0\n")
+
+    repaired_code = (
+        "Here is the repaired test:\n```python\n"
+        "from app import choose\n\n"
+        "def test_choose():\n"
+        "    assert choose(1) is True\n"
+        "```\nFixed the unconfigured mock."
+    )
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        class chat:
+            class completions:
+                @staticmethod
+                def create(**kwargs):
+                    class FakeChoice:
+                        message = type("Msg", (), {"content": repaired_code})()
+                        finish_reason = "stop"
+                    class FakeResp:
+                        choices = [FakeChoice()]
+                        usage = None
+                    return FakeResp()
+
+    monkeypatch.setattr(verification, "OpenAI", FakeClient)
+    from pydantic import SecretStr
+    monkeypatch.setattr(verification.settings, "litellm_api_key", SecretStr("test-key"))
+
+    state = {
+        "project_path": str(tmp_path),
+        "run_id": "run-test",
+    }
+    item = {
+        "target_path": "app.py",
+        "test_path": "tests/test_app.py",
+        "content": "def test_choose(): assert False\n",
+    }
+
+    repaired = verification._repair_candidate(state, item, "AssertionError", 1)
+    assert repaired is not None
+    assert "_repair_error" not in repaired
+    assert repaired["test_count"] == 1
+    assert "def test_choose():" in repaired["content"]
+    assert "Here is the repaired test" not in repaired["content"]
+
+
+def test_repair_candidate_handles_invalid_python_gracefully(tmp_path, monkeypatch):
+    target_file = tmp_path / "app.py"
+    target_file.write_text("def choose(x): return x > 0\n")
+
+    invalid_code = "def test_broken(:\n    assert True"
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        class chat:
+            class completions:
+                @staticmethod
+                def create(**kwargs):
+                    class FakeChoice:
+                        message = type("Msg", (), {"content": invalid_code})()
+                        finish_reason = "stop"
+                    class FakeResp:
+                        choices = [FakeChoice()]
+                        usage = None
+                    return FakeResp()
+
+    monkeypatch.setattr(verification, "OpenAI", FakeClient)
+    from pydantic import SecretStr
+    monkeypatch.setattr(verification.settings, "litellm_api_key", SecretStr("test-key"))
+
+    state = {
+        "project_path": str(tmp_path),
+        "run_id": "run-test",
+    }
+    item = {
+        "target_path": "app.py",
+        "test_path": "tests/test_app.py",
+        "content": "def test_choose(): assert False\n",
+    }
+
+    repaired = verification._repair_candidate(state, item, "AssertionError", 1)
+    assert repaired is not None
+    assert "_repair_error" in repaired
+    assert "model repair rejected" in repaired["_repair_error"]
+
+
+def test_repair_candidate_salvages_truncated_output(tmp_path, monkeypatch):
+    target_file = tmp_path / "app.py"
+    target_file.write_text("def choose(x): return x > 0\n")
+
+    truncated_code = (
+        "```python\n"
+        "def test_one():\n"
+        "    assert 1 == 1\n\n"
+        "def test_two():\n"
+        "    assert 2 =="
+    )
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        class chat:
+            class completions:
+                @staticmethod
+                def create(**kwargs):
+                    class FakeChoice:
+                        message = type("Msg", (), {"content": truncated_code})()
+                        finish_reason = "length"
+                    class FakeResp:
+                        choices = [FakeChoice()]
+                        usage = None
+                    return FakeResp()
+
+    monkeypatch.setattr(verification, "OpenAI", FakeClient)
+    from pydantic import SecretStr
+    monkeypatch.setattr(verification.settings, "litellm_api_key", SecretStr("test-key"))
+
+    state = {
+        "project_path": str(tmp_path),
+        "run_id": "run-test",
+    }
+    item = {
+        "target_path": "app.py",
+        "test_path": "tests/test_app.py",
+        "content": "def test_one(): assert False\n",
+    }
+
+    repaired = verification._repair_candidate(state, item, "AssertionError", 1)
+    assert repaired is not None
+    assert "_repair_error" not in repaired
+    assert repaired["test_count"] == 1
+    assert "def test_one():" in repaired["content"]
+    assert "test_two" not in repaired["content"]
+
