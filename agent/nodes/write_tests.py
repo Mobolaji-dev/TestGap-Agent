@@ -1,11 +1,12 @@
 import logging
+import ast
 from pathlib import Path
 from time import perf_counter
 
 from openai import OpenAI
 
 from agent.prompts.test_writer import build_test_writer_prompt, TEST_WRITER_SYSTEM_PROMPT
-from agent.state import TestGapState
+from agent.state import TestGapState, report_progress
 from agent.candidate_metrics import test_case_count
 from agent.telemetry import wrap_llm_client
 from app.config.settings import settings
@@ -40,6 +41,16 @@ def _target_file(root: Path, value: str) -> tuple[Path, str]:
 def _source_excerpt(source: str, uncovered_lines: list[int]) -> str:
     lines = source.splitlines()
     selected: set[int] = set()
+    try:
+        module = ast.parse(source)
+    except SyntaxError:
+        module = None
+    if module is not None:
+        # Give the model the real import paths even when the measured gap is
+        # far below the import block; this prevents guessed project modules.
+        for node in module.body:
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                selected.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
     for line_number in uncovered_lines:
         selected.update(range(max(1, line_number - 4), min(len(lines), line_number + 4) + 1))
     if not selected:
@@ -96,6 +107,12 @@ def write_tests(state: TestGapState) -> dict:
     target = targets[0]  # One model call per run keeps the shared hackathon budget bounded.
     try:
         source_path, relative_path = _target_file(root, target["path"])
+        report_progress(
+            state,
+            step="write_tests",
+            message=f"Preparing a model request to draft tests for {relative_path}.",
+            data={"model": settings.litellm_model, "target_path": relative_path},
+        )
         source_text = _read_small_file(source_path, 100_000)
         excerpt = _source_excerpt(source_text, target.get("uncovered_lines", []))
         readme = _read_small_file(root / "README.md", 5_000)
@@ -118,6 +135,13 @@ def write_tests(state: TestGapState) -> dict:
             target=relative_path,
         )
         started = perf_counter()
+        report_progress(
+            state,
+            step="write_tests",
+            event_type="step.progress",
+            message=f"Calling {settings.litellm_model} to draft tests for {relative_path}.",
+            data={"model": settings.litellm_model, "target_path": relative_path},
+        )
         response = client.chat.completions.create(
             model=settings.litellm_model,
             messages=[
@@ -128,7 +152,11 @@ def write_tests(state: TestGapState) -> dict:
             max_tokens=2_000,
         )
         duration_ms = int((perf_counter() - started) * 1000)
-        content = (response.choices[0].message.content or "").strip()
+        choice = response.choices[0]
+        finish_reason = getattr(choice, "finish_reason", None)
+        if finish_reason == "length":
+            raise ModelOutputTruncatedError
+        content = (choice.message.content or "").strip()
         if content.startswith("```"):
             content = content.split("\n", 1)[-1]
             if content.endswith("```"):
@@ -136,14 +164,19 @@ def write_tests(state: TestGapState) -> dict:
         if not content:
             raise ValueError("The model returned an empty test draft")
         drafted_test_count = test_case_count(content)
-        if drafted_test_count == 0:
-            raise ValueError("The model returned no pytest test functions")
+        if drafted_test_count != 3:
+            raise ValueError(
+                f"The model returned {drafted_test_count} pytest test functions; exactly 3 are required"
+            )
+        if len(content.splitlines()) > 100:
+            raise ValueError("The model returned more than 100 lines of test code")
 
         usage = response.usage
         usage_data = {
             "prompt_tokens": getattr(usage, "prompt_tokens", None),
             "completion_tokens": getattr(usage, "completion_tokens", None),
             "duration_ms": duration_ms,
+            "finish_reason": finish_reason,
         }
         candidate = {
             "target_path": relative_path,
@@ -151,6 +184,7 @@ def write_tests(state: TestGapState) -> dict:
             "content": content,
             "model": settings.litellm_model,
             "test_count": drafted_test_count,
+            "finish_reason": finish_reason,
         }
         return {
             "generated_tests": [candidate],
@@ -158,6 +192,18 @@ def write_tests(state: TestGapState) -> dict:
                 "type": "step.completed", "step": "write_tests", "status": "success",
                 "message": f"Drafted a candidate test for {relative_path}.",
                 "data": {"model": settings.litellm_model, "test_count": drafted_test_count, **usage_data},
+            }],
+        }
+    except ModelOutputTruncatedError:
+        message = "The model response reached its output token limit; no candidate tests were saved."
+        logger.warning("Test drafting reached the configured output token limit")
+        return {
+            "generated_tests": [],
+            "warnings": [message],
+            "events": [{
+                "type": "step.completed", "step": "write_tests", "status": "warning",
+                "message": message,
+                "data": {"model": settings.litellm_model, "finish_reason": "length"},
             }],
         }
     except Exception as exc:
@@ -172,3 +218,7 @@ def write_tests(state: TestGapState) -> dict:
                 "data": {"model": settings.litellm_model},
             }],
         }
+
+
+class ModelOutputTruncatedError(Exception):
+    """Raised when the provider reports that the generated test file was cut off."""

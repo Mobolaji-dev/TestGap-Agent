@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any, TypedDict
 
 
@@ -26,3 +27,24 @@ class TestGapState(TypedDict, total=False):
     baseline_status: str
     baseline_summary: dict[str, Any]
     generated_tests: list[dict[str, Any]]
+    progress_callback: Callable[[AgentEvent], None]
+
+
+def report_progress(
+    state: TestGapState,
+    *,
+    step: str,
+    message: str,
+    data: dict[str, Any] | None = None,
+    event_type: str = "step.started",
+) -> None:
+    """Persist a stage-start event while a graph node is still working."""
+    callback = state.get("progress_callback")
+    if callback is not None:
+        callback({
+            "type": event_type,
+            "step": step,
+            "status": "running",
+            "message": message,
+            "data": data or {},
+        })

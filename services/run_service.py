@@ -3,13 +3,14 @@ import difflib
 import logging
 import queue
 import shutil
+import threading
 import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 
 from agent.graph import build_graph
-from agent.telemetry import langgraph_callbacks
+from agent.telemetry import langgraph_callbacks, neatlogs_status
 from app.config.settings import settings
 from db.repository.project_repository import ProjectRepository
 from db.repository.run_repository import RunRepository, run_repository
@@ -128,6 +129,27 @@ class RunService:
         self.repository.save(run)
         started = time.perf_counter()
         try:
+            telemetry = neatlogs_status()
+            if not telemetry["initialized"]:
+                detail = str(telemetry["status"])
+                warning = f"Neatlogs tracing is unavailable ({detail}); this run will not appear in Neatlogs."
+                self._event(
+                    run_id,
+                    "telemetry.disabled",
+                    "warning",
+                    warning,
+                    step="telemetry",
+                    data={"configured": telemetry["configured"], "status": detail},
+                )
+            else:
+                self._event(
+                    run_id,
+                    "telemetry.enabled",
+                    "success",
+                    "Neatlogs tracing is initialized for this run.",
+                    step="telemetry",
+                    data={"endpoint": telemetry["endpoint"]},
+                )
             if project.repository_url:
                 workspace_root = ProjectRepository.get_workspace_root()
                 project.path = workspace_root / run.run_id / project.name
@@ -156,6 +178,17 @@ class RunService:
                     data={"test_framework": project.test_framework},
                 )
             graph = build_graph()
+            updates: queue.Queue = queue.Queue()
+            stream_finished = object()
+
+            def publish(update) -> None:
+                updates.put(update)
+
+            def publish_progress(event_data: dict) -> None:
+                # Persist events on the asyncio thread; the graph worker only
+                # forwards messages so SQLite writes never race each other.
+                publish(("progress", event_data))
+
             initial_state = {
                 "run_id": run_id,
                 "project_id": project.id,
@@ -166,6 +199,7 @@ class RunService:
                 "events": [],
                 "targets": [],
                 "warnings": [],
+                "progress_callback": publish_progress,
             }
             callbacks = langgraph_callbacks()
             graph_config = {
@@ -174,9 +208,6 @@ class RunService:
             }
             if callbacks:
                 graph_config["callbacks"] = callbacks
-            updates: queue.Queue = queue.Queue()
-            stream_finished = object()
-
             def stream_graph() -> None:
                 try:
                     for update in graph.stream(
@@ -184,17 +215,40 @@ class RunService:
                         config=graph_config,
                         stream_mode="updates",
                     ):
-                        updates.put(update)
+                        publish(update)
                 except BaseException as exc:
-                    updates.put(exc)
+                    publish(exc)
                 finally:
-                    updates.put(stream_finished)
+                    publish(stream_finished)
 
-            stream_task = asyncio.create_task(asyncio.to_thread(stream_graph))
+            stream_thread = threading.Thread(
+                target=stream_graph,
+                name=f"testgap-graph-{run_id}",
+                daemon=True,
+            )
+            stream_thread.start()
             while True:
-                update = await asyncio.to_thread(updates.get)
+                try:
+                    update = updates.get_nowait()
+                except queue.Empty:
+                    # Keep the API loop responsive while the graph worker runs;
+                    # polling avoids occupying a second executor thread for a
+                    # blocking queue read and still persists each event promptly.
+                    await asyncio.sleep(0.02)
+                    continue
                 if update is stream_finished:
                     break
+                if isinstance(update, tuple) and update[0] == "progress":
+                    event_data = update[1]
+                    self._event(
+                        run_id,
+                        event_data["type"],
+                        event_data["status"],
+                        event_data["message"],
+                        step=event_data["step"],
+                        data=event_data.get("data", {}),
+                    )
+                    continue
                 if isinstance(update, BaseException):
                     raise update
                 for node_name, node_result in update.items():
@@ -229,8 +283,6 @@ class RunService:
                     if "warnings" in node_result:
                         run.warnings.extend(node_result["warnings"])
                     self.repository.save(run)
-            await stream_task
-
             run = self.get_run(run_id)
             if run.candidate_tests and all(
                 candidate.verification_status == "passed" for candidate in run.candidate_tests

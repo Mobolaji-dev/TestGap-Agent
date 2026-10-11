@@ -1,8 +1,9 @@
-from agent.state import TestGapState
+from agent.state import TestGapState, report_progress
 
 
 def rank_gaps(state: TestGapState) -> dict:
     """Rank uncovered Python files using a small, inspectable heuristic."""
+    report_progress(state, step="ranking", message="Ranking under-tested Python files from coverage data.")
     files = state.get("baseline_summary", {}).get("files", {})
     ast_estimate = state.get("baseline_status") == "bootstrap"
     targets: list[dict] = []

@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from agent.state import TestGapState
+from agent.state import TestGapState, report_progress
 
 
 def inspect_repository(state: TestGapState) -> dict:
+    report_progress(state, step="inspection", message="Inspecting repository layout and test configuration.")
     root = Path(state["project_path"]).resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Configured project path is not a directory")

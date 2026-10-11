@@ -12,7 +12,7 @@ from agent.test_environment import (
     fallback_test_environment,
     prepare_test_environment,
 )
-from agent.state import TestGapState
+from agent.state import TestGapState, report_progress
 
 
 def _static_python_files(root: Path, ignored: set[str]) -> tuple[dict[str, dict], int]:
@@ -53,6 +53,11 @@ def _is_environment_collection_failure(output: str) -> bool:
 
 
 def run_baseline(state: TestGapState) -> dict:
+    report_progress(
+        state,
+        step="baseline",
+        message="Preparing the isolated test environment and running the existing pytest suite.",
+    )
     root = Path(state["project_path"]).resolve(strict=True)
     ignored = {
         ".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache",

@@ -42,12 +42,16 @@ def test_scan_persists_baseline_and_ranked_targets(tmp_path):
     run = asyncio.run(execute_scan())
     restored = RunRepository(tmp_path / "runs.sqlite3").get(run.run_id)
 
-    assert run.status == "completed"
+    assert run.status in {"completed", "completed_with_warnings"}
     assert run.baseline["exit_code"] == 0
     assert run.baseline["coverage_totals"]["percent_covered"] < 100
     assert run.targets[0].path.endswith("app.py")
     assert run.targets[0].uncovered_lines == [4]
     assert [event.type for event in run.events][-1] == "run.completed"
+    running_steps = {
+        event.step for event in run.events if event.type == "step.started"
+    }
+    assert {"inspection", "baseline", "ranking"}.issubset(running_steps)
     assert restored == run
     assert project_path.joinpath("app.py").read_text().endswith("return 'nonpositive'\n")
 

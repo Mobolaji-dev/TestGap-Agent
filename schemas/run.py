@@ -96,8 +96,10 @@ class TestCandidate(BaseModel):
     content: str
     model: str
     test_count: int = 0
+    finish_reason: str | None = None
     verification_status: Literal["pending", "passed", "failed"] = "pending"
     verification_summary: str | None = None
+    verification_output: str | None = None
 
 
 class RunResponse(BaseModel):
