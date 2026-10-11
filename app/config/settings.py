@@ -37,7 +37,7 @@ class Settings(BaseSettings):
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "https://testgap.pxxl.click",
-            "https://testgap-agent.pxxl.click",
+            "https://testgap-agent.onrender.com",
             "https://test-gap-agent.vercel.app",
         ],
         validation_alias=AliasChoices("TESTGAP_CORS_ORIGINS", "CORS_ORIGINS"),

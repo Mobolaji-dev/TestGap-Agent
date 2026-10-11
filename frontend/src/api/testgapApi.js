@@ -5,10 +5,10 @@ function resolveBackendUrl() {
   }
   if (typeof window !== "undefined" && window.location) {
     if (window.location.hostname.includes("pxxl.click")) {
-      return "https://testgap-agent.pxxl.click";
+      return "https://testgap-agent.onrender.com";
     }
     if (window.location.hostname.includes("vercel.app")) {
-      return "https://testgap-agent.pxxl.click";
+      return "https://testgap-agent.onrender.com";
     }
   }
   return "";
