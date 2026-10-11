@@ -168,7 +168,16 @@ def run_baseline(state: TestGapState) -> dict:
                 totals = data.get("totals", {})
                 coverage_pct = totals.get("percent_covered")
                 summary["coverage_totals"] = totals
-                summary["files"] = data.get("files", {})
+                raw_files = data.get("files", {})
+                clean_files = {}
+                for fpath, finfo in raw_files.items():
+                    clean_files[fpath] = {
+                        "summary": finfo.get("summary", {}),
+                        "missing_lines": finfo.get("missing_lines", []),
+                        "executed_lines": finfo.get("executed_lines", []),
+                        "missing_branches": finfo.get("missing_branches", []),
+                    }
+                summary["files"] = clean_files
             else:
                 # A passing pytest run is still useful when coverage cannot write its
                 # report (for example, when this scanner is itself running under

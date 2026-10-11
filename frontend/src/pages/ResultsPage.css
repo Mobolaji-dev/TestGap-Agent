@@ -6,14 +6,18 @@
   background-color: var(--canvas);
   padding: var(--spacing-lg);
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .results-page-container {
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* Header card */
