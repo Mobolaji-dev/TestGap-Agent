@@ -47,4 +47,34 @@ def test_verification_repairs_candidate_within_requested_budget(tmp_path, monkey
     assert result["coverage_after_pct"] == 66.7
     assert result["generated_tests"][0]["verification_status"] == "passed"
     assert result["generated_tests"][0]["repair_attempts"] == 1
+    assert result["generated_tests"][0]["repair_status"] == "succeeded"
     assert result["warnings"] == []
+
+
+def test_verification_reports_failed_model_repair_attempt(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        verification,
+        "_run_candidate",
+        lambda *args, **kwargs: (False, "pytest failed", "404 Not Found", None),
+    )
+    monkeypatch.setattr(verification, "_repair_candidate", lambda *args, **kwargs: None)
+    candidate = {
+        "target_path": "app/api/auth.py",
+        "test_path": "tests/test_auth_testgap.py",
+        "content": "def test_wrong_route():\n    assert False\n",
+        "model": "claude-haiku",
+    }
+
+    result = verification.verify_tests({
+        "project_path": str(tmp_path),
+        "generated_tests": [candidate],
+        "repair_limit": 2,
+        "baseline_summary": {"test_environment": {"status": "ready"}},
+    })
+
+    rejected = result["generated_tests"][0]
+    assert rejected["verification_status"] == "failed"
+    assert rejected["repair_attempts"] == 1
+    assert rejected["repair_status"] == "failed"
+    assert "Model repair failed" in rejected["verification_summary"]
+    assert rejected["repair_failure"] == "model repair returned no result"

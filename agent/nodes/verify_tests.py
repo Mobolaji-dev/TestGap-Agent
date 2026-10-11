@@ -148,7 +148,7 @@ def _run_candidate(
 def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt: int) -> dict | None:
     """Ask the configured model to repair a failed candidate using actual pytest output."""
     if not settings.litellm_api_key:
-        return None
+        return {**item, "_repair_error": "LLM API key is not configured"}
     try:
         project_root = Path(state["project_path"]).resolve(strict=True)
         target_path = (project_root / Path(item["target_path"])).resolve(strict=True)
@@ -202,7 +202,7 @@ def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt:
                 content = content[:-3].strip()
         count = test_case_count(content)
         if not content or count == 0 or len(content.splitlines()) > 100:
-            return None
+            return {**item, "_repair_error": "model returned no usable pytest module"}
         usage = getattr(response, "usage", None)
         return {
             **item,
@@ -217,8 +217,9 @@ def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt:
             },
         }
     except Exception as exc:
-        logger.warning("Candidate test repair failed (%s)", type(exc).__name__)
-        return None
+        error_type = type(exc).__name__
+        logger.warning("Candidate test repair failed (%s)", error_type)
+        return {**item, "_repair_error": f"model request failed ({error_type})"}
 
 
 def verify_tests(state: TestGapState) -> dict:
@@ -253,6 +254,7 @@ def verify_tests(state: TestGapState) -> dict:
         passed = False
         test_count = 0
         repair_attempts = 0
+        repair_status = "not_attempted"
         try:
             _safe_test_path(item["test_path"])
             for attempt in range(repair_limit + 1):
@@ -271,6 +273,8 @@ def verify_tests(state: TestGapState) -> dict:
                     break
                 if attempt >= repair_limit or not diagnostic:
                     break
+                repair_attempts = attempt + 1
+                repair_status = "attempting"
                 report_progress(
                     state,
                     step="verify_tests",
@@ -280,11 +284,20 @@ def verify_tests(state: TestGapState) -> dict:
                 )
                 repaired = _repair_candidate(state, item, diagnostic, attempt + 1)
                 if repaired is None:
+                    repair_status = "failed"
+                    item["repair_failure"] = "model repair returned no result"
+                    break
+                repair_error = repaired.pop("_repair_error", None)
+                if repair_error:
+                    repair_status = "failed"
+                    item["repair_failure"] = repair_error
                     break
                 item = repaired
+                repair_status = "succeeded"
 
             item["test_count"] = test_count
             item["repair_attempts"] = repair_attempts
+            item["repair_status"] = repair_status
             item["verification_status"] = "passed" if passed else "failed"
             item["verification_output"] = diagnostic if not passed else None
             if passed:
@@ -304,12 +317,23 @@ def verify_tests(state: TestGapState) -> dict:
                     },
                 })
             else:
-                item["verification_summary"] = f"Generated tests were not accepted: {error}."
+                repair_note = (
+                    f" Model repair failed: {item.get('repair_failure', 'no usable candidate was returned')}."
+                    if repair_status == "failed"
+                    else ""
+                )
+                item["verification_summary"] = f"Generated tests were not accepted: {error}.{repair_note}"
                 warnings.append(item["verification_summary"])
                 events.append({
                     "type": "step.completed", "step": "verify_tests", "status": "warning",
                     "message": item["verification_summary"],
-                    "data": {"test_count": test_count, "repair_attempts": repair_attempts, "pytest_output": diagnostic},
+                    "data": {
+                        "test_count": test_count,
+                        "repair_attempts": repair_attempts,
+                        "repair_status": repair_status,
+                        "repair_failure": item.get("repair_failure"),
+                        "pytest_output": diagnostic,
+                    },
                 })
             verified.append(item)
         except (KeyError, OSError, SyntaxError, ValueError) as exc:

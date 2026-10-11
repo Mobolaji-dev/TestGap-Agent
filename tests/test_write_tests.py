@@ -3,9 +3,11 @@ import pytest
 from agent.nodes.write_tests import (
     DraftValidationError,
     _normalize_test_draft,
+    _known_routes,
     _source_excerpt,
     _validate_test_draft,
 )
+from agent.prompts.test_writer import build_test_writer_prompt
 
 
 def test_source_excerpt_keeps_target_imports_for_distant_coverage_gaps():
@@ -27,6 +29,45 @@ def test_source_excerpt_keeps_target_imports_for_distant_coverage_gaps():
     assert "from app.services.auth_service import AuthService" in excerpt
     assert "from app.services.supabase_auth import SupabaseAuthError" in excerpt
     assert "def uncovered():" in excerpt
+
+
+def test_source_excerpt_keeps_router_prefix_and_route_decorator():
+    source = (
+        "from fastapi import APIRouter\n"
+        "router = APIRouter(prefix='/api/auth')\n"
+        "@router.get('/departments')\n"
+        "async def list_departments():\n"
+        "    return []\n"
+    )
+
+    excerpt = _source_excerpt(source, [5])
+
+    assert "APIRouter(prefix='/api/auth')" in excerpt
+    assert "@router.get('/departments')" in excerpt
+
+
+def test_known_routes_combine_router_prefix_and_endpoint_path():
+    source = (
+        "from fastapi import APIRouter\n"
+        "router = APIRouter(prefix='/api/auth')\n"
+        "@router.get('/departments')\n"
+        "async def list_departments():\n"
+        "    return []\n"
+    )
+
+    assert _known_routes(source) == ["GET /api/auth/departments"]
+
+
+def test_test_writer_prompt_supplies_exact_route_and_blocks_unprefixed_guess():
+    prompt = build_test_writer_prompt(
+        target_path="app/api/auth.py",
+        source="router = APIRouter(prefix='/api/auth')",
+        uncovered_lines=[57],
+        route_context="GET /api/auth/departments",
+    )
+
+    assert "GET /api/auth/departments" in prompt
+    assert "never call a child path without its prefix" in prompt
 
 
 def test_validation_accepts_a_complete_bounded_draft_with_more_than_three_tests():

@@ -103,12 +103,69 @@ def _source_excerpt(source: str, uncovered_lines: list[int]) -> str:
         for node in module.body:
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 selected.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
+            # Router prefixes define the externally visible path. Keep them in
+            # context even when coverage points only at the endpoint body.
+            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                value = node.value
+                if isinstance(value, ast.Call) and getattr(value.func, "id", None) == "APIRouter":
+                    selected.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
+            # Include all route decorators so the model can see exact sibling
+            # endpoint patterns without receiving the entire module.
+            for child in ast.walk(node):
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    for decorator in child.decorator_list:
+                        if isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute):
+                            if decorator.func.attr in {"get", "post", "put", "patch", "delete", "options", "head"}:
+                                selected.update(range(decorator.lineno, (decorator.end_lineno or decorator.lineno) + 1))
     for line_number in uncovered_lines:
         selected.update(range(max(1, line_number - 4), min(len(lines), line_number + 4) + 1))
     if not selected:
         selected.update(range(1, min(len(lines), 120) + 1))
     excerpt = "\n".join(f"{number}: {lines[number - 1]}" for number in sorted(selected))
     return excerpt[:_MAX_SOURCE_CHARS]
+
+
+def _known_routes(source: str) -> list[str]:
+    """Resolve literal FastAPI APIRouter prefixes and route decorators."""
+    try:
+        module = ast.parse(source)
+    except SyntaxError:
+        return []
+
+    prefixes: dict[str, str] = {}
+    routes: list[str] = []
+    for node in module.body:
+        if isinstance(node, (ast.Assign, ast.AnnAssign)) and isinstance(node.value, ast.Call):
+            if getattr(node.value.func, "id", None) == "APIRouter":
+                prefix = ""
+                for keyword in node.value.keywords:
+                    if keyword.arg == "prefix":
+                        try:
+                            prefix = ast.literal_eval(keyword.value)
+                        except (ValueError, TypeError):
+                            prefix = ""
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for target in targets:
+                    if isinstance(target, ast.Name):
+                        prefixes[target.id] = prefix if isinstance(prefix, str) else ""
+
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for decorator in node.decorator_list:
+            if not isinstance(decorator, ast.Call) or not isinstance(decorator.func, ast.Attribute):
+                continue
+            router = decorator.func.value
+            if not isinstance(router, ast.Name) or router.id not in prefixes:
+                continue
+            try:
+                child_path = ast.literal_eval(decorator.args[0]) if decorator.args else ""
+            except (ValueError, TypeError):
+                continue
+            if not isinstance(child_path, str):
+                continue
+            path = f"{prefixes[router.id].rstrip('/')}/{child_path.lstrip('/')}"
+            routes.append(f"{decorator.func.attr.upper()} {path or '/'}")
+    return routes
 
 
 def _read_small_file(path: Path, limit: int) -> str:
@@ -174,6 +231,7 @@ def write_tests(state: TestGapState) -> dict:
             source=excerpt,
             uncovered_lines=focus_lines,
             project_rules=readme,
+            route_context="\n".join(_known_routes(source_text)),
         )
         client = OpenAI(
             api_key=settings.litellm_api_key.get_secret_value(),
