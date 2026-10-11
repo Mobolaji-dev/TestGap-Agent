@@ -134,7 +134,14 @@ def prepare_test_environment(
         if not runner.is_file() or not marker.is_file() or marker.read_text() != fingerprint:
             if env_root.exists():
                 shutil.rmtree(env_root)
-            venv.EnvBuilder(with_pip=True, clear=True).create(env_root)
+            # Clone workspaces may be mounted `noexec` by hosted runtimes.
+            # On POSIX, symlink the host interpreter instead of copying it
+            # into that mount; otherwise ensurepip cannot launch the venv Python.
+            venv.EnvBuilder(
+                with_pip=True,
+                clear=True,
+                symlinks=(os.name != "nt"),
+            ).create(env_root)
             setup_timeout = max(90, min(timeout_seconds, 300))
             install = subprocess.run(
                 [
