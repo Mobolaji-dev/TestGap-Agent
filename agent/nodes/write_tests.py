@@ -13,6 +13,7 @@ from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 _MAX_SOURCE_CHARS = 12_000
+_MAX_FOCUS_LINES = 12
 _MAX_GENERATED_TESTS = 12
 _MAX_GENERATED_LINES = 250
 
@@ -39,6 +40,31 @@ def _validate_test_draft(content: str) -> int:
             f"the draft contains {lines} lines; the limit is {_MAX_GENERATED_LINES}"
         )
     return count
+
+
+def _normalize_test_draft(content: str) -> tuple[str, bool]:
+    """Keep complete test functions when the provider truncates its final draft."""
+    try:
+        ast.parse(content)
+        return content, False
+    except SyntaxError:
+        lines = content.splitlines()
+        test_starts = [
+            index for index, line in enumerate(lines)
+            if line.startswith("def test_") or line.startswith("async def test_")
+        ]
+        best_prefix = ""
+        for boundary in test_starts[1:]:
+            prefix = "\n".join(lines[:boundary]).rstrip()
+            try:
+                ast.parse(prefix)
+            except SyntaxError:
+                continue
+            if test_case_count(prefix) > 0 and len(prefix) > len(best_prefix):
+                best_prefix = prefix
+        if best_prefix:
+            return best_prefix, True
+        raise DraftValidationError("the model returned incomplete or invalid Python") from None
 
 
 def _target_file(root: Path, value: str) -> tuple[Path, str]:
@@ -140,12 +166,13 @@ def write_tests(state: TestGapState) -> dict:
             data={"model": settings.litellm_model, "target_path": relative_path},
         )
         source_text = _read_small_file(source_path, 100_000)
-        excerpt = _source_excerpt(source_text, target.get("uncovered_lines", []))
+        focus_lines = target.get("uncovered_lines", [])[:_MAX_FOCUS_LINES]
+        excerpt = _source_excerpt(source_text, focus_lines)
         readme = _read_small_file(root / "README.md", 5_000)
         prompt = build_test_writer_prompt(
             target_path=relative_path,
             source=excerpt,
-            uncovered_lines=target.get("uncovered_lines", []),
+            uncovered_lines=focus_lines,
             project_rules=readme,
         )
         client = OpenAI(
@@ -175,14 +202,11 @@ def write_tests(state: TestGapState) -> dict:
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            # 2,000 truncated the CampusPay draft before it was complete.
-            max_tokens=4_000,
+            max_tokens=2_000,
         )
         duration_ms = int((perf_counter() - started) * 1000)
         choice = response.choices[0]
         finish_reason = getattr(choice, "finish_reason", None)
-        if finish_reason == "length":
-            raise ModelOutputTruncatedError
         content = (choice.message.content or "").strip()
         if content.startswith("```"):
             content = content.split("\n", 1)[-1]
@@ -190,6 +214,7 @@ def write_tests(state: TestGapState) -> dict:
                 content = content[:-3].strip()
         if not content:
             raise ValueError("The model returned an empty test draft")
+        content, salvaged = _normalize_test_draft(content)
         drafted_test_count = _validate_test_draft(content)
 
         usage = response.usage
@@ -211,20 +236,16 @@ def write_tests(state: TestGapState) -> dict:
             "generated_tests": [candidate],
             "events": [{
                 "type": "step.completed", "step": "write_tests", "status": "success",
-                "message": f"Drafted a candidate test for {relative_path}.",
-                "data": {"model": settings.litellm_model, "test_count": drafted_test_count, **usage_data},
-            }],
-        }
-    except ModelOutputTruncatedError:
-        message = "The model response reached its output token limit; no candidate tests were saved."
-        logger.warning("Test drafting reached the configured output token limit")
-        return {
-            "generated_tests": [],
-            "warnings": [message],
-            "events": [{
-                "type": "step.completed", "step": "write_tests", "status": "warning",
-                "message": message,
-                "data": {"model": settings.litellm_model, "finish_reason": "length"},
+                "message": (
+                    f"Kept {drafted_test_count} complete test(s) from a truncated model draft for {relative_path}."
+                    if salvaged else f"Drafted {drafted_test_count} candidate test(s) for {relative_path}."
+                ),
+                "data": {
+                    "model": settings.litellm_model,
+                    "test_count": drafted_test_count,
+                    "truncated_output_salvaged": salvaged,
+                    **usage_data,
+                },
             }],
         }
     except DraftValidationError as exc:
@@ -251,7 +272,3 @@ def write_tests(state: TestGapState) -> dict:
                 "data": {"model": settings.litellm_model},
             }],
         }
-
-
-class ModelOutputTruncatedError(Exception):
-    """Raised when the provider reports that the generated test file was cut off."""
