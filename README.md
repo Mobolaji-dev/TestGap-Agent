@@ -4,10 +4,10 @@ TestGap Finder is an agent for finding high-priority Python test gaps and produc
 
 ## Current implementation slice
 
-The API supports configured project discovery, asynchronous run creation, run status, cancellation, and SSE events. A run can use either a server-configured local project or a public GitHub HTTPS URL. The LangGraph workflow inspects the selected repository, runs a baseline pytest/coverage pass, ranks uncovered files, and drafts tests for the highest-ranked gap with the configured LiteLLM model. Candidate tests are returned for review but are not written into the selected repository or executed yet; repair and mutation verification remain planned.
+The API supports configured project discovery, asynchronous run creation, run status, cancellation, and SSE events. A run can use either a server-configured local project or a public GitHub HTTPS URL. The LangGraph workflow inspects the selected repository, measures baseline pytest/coverage, ranks uncovered files, drafts tests for the highest-ranked gap with the configured LiteLLM model, and verifies candidates against the existing suite in a disposable copy. Only passing candidates are offered as test-only patches; the source checkout is never edited. Repair and mutation verification remain planned.
 
 The backend uses the layering from `hammet-core` (routes → services → repositories) and the agent layout from `langgraph-wa-agent` (`state`, `nodes`, `prompts`, `graph`).
-Run records, baseline coverage details, ranked targets, and events are stored in SQLite at `.runs/testgap.sqlite3` by default; set `TESTGAP_RUN_DATABASE_PATH` to choose another location.
+Run records, generated candidates, patches, and progress events use SQLite at `.runs/testgap.sqlite3` locally by default. Set `DATABASE_URL` (or `TESTGAP_DATABASE_URL`) to a managed PostgreSQL connection string in production. This is required on Render's ephemeral filesystem to retain runs and events across restarts and deploys; without it, the service uses temporary SQLite storage and history can disappear.
 
 ## Run locally
 
@@ -43,15 +43,21 @@ Run/event schemas are defined in `schemas/run.py`; project schemas are in `schem
 - Scanning runs pytest from the submitted repository. Only scan repositories you trust; this MVP does not run jobs inside a separate OS/container sandbox.
 - The browser cannot submit an arbitrary filesystem path.
 - Baseline commands run with `shell=False`, bounded runtime, and bounded captured output.
-- Run results and events survive API restarts in the SQLite run repository.
+- Run results and events persist across deploys when `DATABASE_URL` points to PostgreSQL. SQLite remains the local-development default and can be ephemeral on hosted containers.
 - Baseline commands run from a temporary copy of the configured project; the inspected checkout is not modified by this step.
 - Set `LITELLM_API_KEY` in the ignored local `.env`. The LiteLLM base URL defaults to `https://litellm.vision.aivar.app/v1`; `LITELLM_MODEL` defaults to `claude-haiku` and can be set to any model ID shown in the hackathon portal. One run drafts tests for at most the top-ranked target.
 - Set a separate `NEATLOGS_API_KEY` to export runtime traces. Without it, model calls still work but neatlogs export is disabled. Source excerpts and repository documentation are sent to the selected model; only use repositories you are authorized to share.
 - Entire is used during development to capture repository context and checkpoints; it is not a runtime dependency. cfo.ai is used to prepare the required pricing, cost, revenue, and runway model; it is not part of the request path.
 
+## Persistent production database
+
+Create a managed PostgreSQL database and set `DATABASE_URL` in the backend service environment. Supabase Postgres works; in its dashboard, use **Connect → Session pooler** and keep the full connection URL secret. Render Postgres also works, but its free databases expire after 30 days. Supabase Free projects can pause after a week of low activity, so use a paid plan if the database must remain continuously active. The app creates its `runs` and `patches` tables on startup; no manual SQL migration is needed.
+
+`/health` reports the configured storage backend, whether its connection is available, and whether it is persistent.
+
 ## Hackathon partner setup
 
-- **neatlogs:** Set `NEATLOGS_API_KEY` in the ignored local `.env`. Run the app and inspect the `testgap-analysis` workflow in the Neatlogs dashboard. The current graph callback records the LangGraph run; a real run is still needed to capture demo evidence.
+- **neatlogs:** Set `NEATLOGS_API_KEY` in the ignored local `.env`. The backend initializes the SDK, attaches its LangGraph callback to graph execution, and wraps the LiteLLM OpenAI-compatible client. Capture a real run from the `testgap-analysis` workflow in the Neatlogs dashboard for submission evidence; code wiring alone does not prove successful trace export.
 - **Entire:** Install the Entire CLI, then run `entire enable --agent codex --skip-push-sessions`, `entire plugin install graph`, and `entire graph init-agents --repo .`. The last command adds `AGENTS.md`/`CLAUDE.md` instructions. Approve the installed hooks in Codex with `/hooks` before expecting automatic session checkpoints. The Graph setup and query are recorded in [evidence/entire-graph.md](evidence/entire-graph.md).
 - **cfo.ai:** Use the prompt in [evidence/cfo-ai-model-brief.md](evidence/cfo-ai-model-brief.md) to create an 18-month, three-scenario business model. Save a cfo.ai export or screenshot in `evidence/` after the account is connected; the brief is prepared input, not proof of a completed cfo.ai model.
 - **AWS / Bedrock (optional):** Use a local AWS profile after the event reissues the exposed credentials. Keep credentials outside this repository. The Bedrock test-writer adapter has not been implemented yet.

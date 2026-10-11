@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     repository_max_size_mb: int = Field(default=200, ge=10, le=2000)
     run_timeout_seconds: int = Field(default=90, ge=5, le=600)
     run_database_path: Path = Field(default=Path(".runs/testgap.sqlite3"))
+    database_url: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TESTGAP_DATABASE_URL", "DATABASE_URL"),
+    )
     litellm_api_key: SecretStr | None = Field(default=None, validation_alias="LITELLM_API_KEY")
     litellm_base_url: str = Field(
         default="https://litellm.vision.aivar.app/v1",

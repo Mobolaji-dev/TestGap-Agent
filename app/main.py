@@ -7,6 +7,7 @@ from agent.telemetry import initialize_neatlogs, neatlogs_status, shutdown_neatl
 from api.v1.projects import router as projects_router
 from api.v1.runs import router as runs_router
 from app.config.settings import settings
+from db.repository.run_repository import run_repository
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -15,6 +16,7 @@ async def lifespan(_: FastAPI):
         yield
     finally:
         shutdown_neatlogs()
+        run_repository.close()
 
 
 app = FastAPI(
@@ -38,4 +40,9 @@ app.include_router(runs_router, prefix=settings.api_prefix)
 
 @app.get("/health", tags=["health"])
 async def health() -> dict[str, object]:
-    return {"status": "ok", "neatlogs": neatlogs_status()}
+    database = run_repository.health()
+    return {
+        "status": "ok" if database["connected"] else "degraded",
+        "database": database,
+        "neatlogs": neatlogs_status(),
+    }
