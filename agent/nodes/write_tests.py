@@ -13,6 +13,32 @@ from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 _MAX_SOURCE_CHARS = 12_000
+_MAX_GENERATED_TESTS = 12
+_MAX_GENERATED_LINES = 250
+
+
+class DraftValidationError(ValueError):
+    """A safe, user-facing reason a model draft was rejected before verification."""
+
+
+def _validate_test_draft(content: str) -> int:
+    try:
+        ast.parse(content)
+    except SyntaxError:
+        raise DraftValidationError("the model returned incomplete or invalid Python") from None
+    count = test_case_count(content)
+    if count == 0:
+        raise DraftValidationError("the draft contains no pytest test functions")
+    if count > _MAX_GENERATED_TESTS:
+        raise DraftValidationError(
+            f"the draft contains {count} test functions; the limit is {_MAX_GENERATED_TESTS}"
+        )
+    lines = len(content.splitlines())
+    if lines > _MAX_GENERATED_LINES:
+        raise DraftValidationError(
+            f"the draft contains {lines} lines; the limit is {_MAX_GENERATED_LINES}"
+        )
+    return count
 
 
 def _target_file(root: Path, value: str) -> tuple[Path, str]:
@@ -163,13 +189,7 @@ def write_tests(state: TestGapState) -> dict:
                 content = content[:-3].strip()
         if not content:
             raise ValueError("The model returned an empty test draft")
-        drafted_test_count = test_case_count(content)
-        if drafted_test_count != 3:
-            raise ValueError(
-                f"The model returned {drafted_test_count} pytest test functions; exactly 3 are required"
-            )
-        if len(content.splitlines()) > 100:
-            raise ValueError("The model returned more than 100 lines of test code")
+        drafted_test_count = _validate_test_draft(content)
 
         usage = response.usage
         usage_data = {
@@ -204,6 +224,18 @@ def write_tests(state: TestGapState) -> dict:
                 "type": "step.completed", "step": "write_tests", "status": "warning",
                 "message": message,
                 "data": {"model": settings.litellm_model, "finish_reason": "length"},
+            }],
+        }
+    except DraftValidationError as exc:
+        message = f"Model draft rejected: {exc}. No candidate tests were saved."
+        logger.warning("%s", message)
+        return {
+            "generated_tests": [],
+            "warnings": [message],
+            "events": [{
+                "type": "step.completed", "step": "write_tests", "status": "warning",
+                "message": message,
+                "data": {"model": settings.litellm_model, "validation_error": str(exc)},
             }],
         }
     except Exception as exc:
