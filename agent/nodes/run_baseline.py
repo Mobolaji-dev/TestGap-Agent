@@ -170,7 +170,25 @@ def run_baseline(state: TestGapState) -> dict:
                 summary["coverage_totals"] = totals
                 summary["files"] = data.get("files", {})
             else:
-                warning = "Tests passed, but coverage.py did not produce a JSON report."
+                # A passing pytest run is still useful when coverage cannot write its
+                # report (for example, when this scanner is itself running under
+                # coverage). Keep the pipeline moving with conservative AST candidates.
+                files, parse_failures = _static_python_files(workspace, ignored)
+                summary["files"] = files
+                summary["baseline_mode"] = "coverage_fallback"
+                summary["parse_failures"] = parse_failures
+                summary["coverage_totals"] = {
+                    "covered_lines": None,
+                    "num_statements": sum(len(file_data["missing_lines"]) for file_data in files.values()),
+                    "percent_covered": None,
+                }
+                baseline_status = "bootstrap" if files else "no_python_source"
+                warning = (
+                    "Tests passed, but coverage.py did not produce a JSON report; "
+                    "continuing with AST-based candidates."
+                    if files
+                    else "Tests passed, but coverage.py did not produce a JSON report and no Python source files were found."
+                )
         elif result.returncode == 5:
             files, parse_failures = _static_python_files(workspace, ignored)
             summary["files"] = files

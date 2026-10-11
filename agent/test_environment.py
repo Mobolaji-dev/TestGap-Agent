@@ -14,6 +14,8 @@ from pathlib import Path
 class TestEnvironmentError(RuntimeError):
     """A target repository's test environment could not be prepared safely."""
 
+    __test__ = False
+
 
 logger = logging.getLogger(__name__)
 
