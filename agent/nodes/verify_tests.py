@@ -1,6 +1,5 @@
 """Run drafted pytest candidates in a disposable copy and measure the result."""
 
-import ast
 import json
 import os
 import shutil
@@ -15,20 +14,12 @@ from agent.test_environment import (
     prepare_test_environment,
 )
 from agent.state import TestGapState
+from agent.candidate_metrics import test_case_count
 
 _IGNORED = {
     ".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache",
     ".aws", ".ssh", ".config", ".coverage",
 }
-
-
-def _test_case_count(source: str) -> int:
-    tree = ast.parse(source)
-    return sum(
-        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.name.startswith("test_")
-        for node in ast.walk(tree)
-    )
 
 
 def _safe_test_path(value: str) -> Path:
@@ -68,7 +59,7 @@ def verify_tests(state: TestGapState) -> dict:
         item = dict(candidate)
         try:
             relative_test = _safe_test_path(item["test_path"])
-            test_count = _test_case_count(item["content"])
+            test_count = test_case_count(item["content"])
             if test_count == 0:
                 raise ValueError("The draft contains no pytest test functions")
 

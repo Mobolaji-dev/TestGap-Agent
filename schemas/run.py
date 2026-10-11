@@ -85,6 +85,7 @@ class RiskTarget(BaseModel):
     line_start: int
     line_end: int
     uncovered_lines: list[int]
+    coverage_basis: Literal["measured_coverage", "ast_estimate"] = "measured_coverage"
     priority_score: float
     rationale: list[str]
 
@@ -112,5 +113,8 @@ class RunResponse(BaseModel):
     baseline: dict[str, Any] = Field(default_factory=dict)
     candidate_tests: list[TestCandidate] = Field(default_factory=list)
     metrics: RunMetrics = Field(default_factory=RunMetrics)
-    trace_url: str | None = None
+    trace_url: str | None = Field(
+        default=None,
+        description="Provider trace link when available; Neatlogs traces are searchable by testgap_run_id.",
+    )
     warnings: list[str] = Field(default_factory=list)

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from agent.telemetry import initialize_neatlogs, shutdown_neatlogs
+from agent.telemetry import initialize_neatlogs, neatlogs_status, shutdown_neatlogs
 from api.v1.projects import router as projects_router
 from api.v1.runs import router as runs_router
 from app.config.settings import settings
@@ -37,5 +37,5 @@ app.include_router(runs_router, prefix=settings.api_prefix)
 
 
 @app.get("/health", tags=["health"])
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health() -> dict[str, object]:
+    return {"status": "ok", "neatlogs": neatlogs_status()}

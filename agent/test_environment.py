@@ -1,6 +1,7 @@
 """Prepare an isolated Python runtime for public-repository test execution."""
 
 import hashlib
+import logging
 import os
 import re
 import shutil
@@ -12,6 +13,9 @@ from pathlib import Path
 
 class TestEnvironmentError(RuntimeError):
     """A target repository's test environment could not be prepared safely."""
+
+
+logger = logging.getLogger(__name__)
 
 
 _ENV_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -156,6 +160,7 @@ def prepare_test_environment(
         raise TestEnvironmentError("Installing repository test dependencies exceeded the setup time limit.") from exc
     except (OSError, subprocess.CalledProcessError) as exc:
         shutil.rmtree(env_root, ignore_errors=True)
+        logger.exception("Could not create the disposable Python test environment")
         raise TestEnvironmentError("Could not create the disposable Python test environment.") from exc
 
     child_env = _subprocess_environment(env_root, runner)

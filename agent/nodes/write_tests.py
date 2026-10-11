@@ -6,6 +6,7 @@ from openai import OpenAI
 
 from agent.prompts.test_writer import build_test_writer_prompt, TEST_WRITER_SYSTEM_PROMPT
 from agent.state import TestGapState
+from agent.candidate_metrics import test_case_count
 from agent.telemetry import wrap_llm_client
 from app.config.settings import settings
 
@@ -110,7 +111,12 @@ def write_tests(state: TestGapState) -> dict:
             timeout=45,
             max_retries=1,
         )
-        client = wrap_llm_client(client)
+        client = wrap_llm_client(
+            client,
+            run_id=state.get("run_id"),
+            project_id=state.get("project_id"),
+            target=relative_path,
+        )
         started = perf_counter()
         response = client.chat.completions.create(
             model=settings.litellm_model,
@@ -129,6 +135,9 @@ def write_tests(state: TestGapState) -> dict:
                 content = content[:-3].strip()
         if not content:
             raise ValueError("The model returned an empty test draft")
+        drafted_test_count = test_case_count(content)
+        if drafted_test_count == 0:
+            raise ValueError("The model returned no pytest test functions")
 
         usage = response.usage
         usage_data = {
@@ -141,13 +150,14 @@ def write_tests(state: TestGapState) -> dict:
             "test_path": _candidate_test_path(root, source_path),
             "content": content,
             "model": settings.litellm_model,
+            "test_count": drafted_test_count,
         }
         return {
             "generated_tests": [candidate],
             "events": [{
                 "type": "step.completed", "step": "write_tests", "status": "success",
                 "message": f"Drafted a candidate test for {relative_path}.",
-                "data": {"model": settings.litellm_model, **usage_data},
+                "data": {"model": settings.litellm_model, "test_count": drafted_test_count, **usage_data},
             }],
         }
     except Exception as exc:
