@@ -9,6 +9,11 @@ import sys
 import tempfile
 from pathlib import Path, PurePosixPath
 
+from agent.test_environment import (
+    TestEnvironmentError,
+    fallback_test_environment,
+    prepare_test_environment,
+)
 from agent.state import TestGapState
 
 _IGNORED = {
@@ -57,6 +62,7 @@ def verify_tests(state: TestGapState) -> dict:
     }]
     coverage_after_pct = None
     tests_added = 0
+    baseline_environment = state.get("baseline_summary", {}).get("test_environment", {})
 
     for candidate in candidates:
         item = dict(candidate)
@@ -87,23 +93,39 @@ def verify_tests(state: TestGapState) -> dict:
                 test_path.write_text(item["content"] + ("\n" if not item["content"].endswith("\n") else ""))
 
                 coverage_file = temp_root / ".coverage"
-                child_env = {
-                    "PATH": os.environ.get("PATH", ""),
-                    "HOME": str(temp_root),
-                    "TMPDIR": str(temp_root),
-                    "PYTHONPATH": os.pathsep.join((str(workspace), str(workspace / "src"))),
-                    "PYTHONDONTWRITEBYTECODE": "1",
-                    "COVERAGE_FILE": str(coverage_file),
-                }
-                if "SYSTEMROOT" in os.environ:
-                    child_env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+                runner = Path(sys.executable)
+                if state.get("repository_url"):
+                    if baseline_environment.get("status") == "failed":
+                        child_env = fallback_test_environment(root, temp_root)
+                    else:
+                        try:
+                            runner, child_env, _ = prepare_test_environment(
+                                root,
+                                timeout_seconds=timeout,
+                            )
+                        except TestEnvironmentError:
+                            child_env = fallback_test_environment(root, temp_root)
+                    child_env["HOME"] = str(temp_root)
+                    child_env["TMPDIR"] = str(temp_root)
+                else:
+                    child_env = {
+                        "PATH": os.environ.get("PATH", ""),
+                        "HOME": str(temp_root),
+                        "TMPDIR": str(temp_root),
+                        "PYTHONPATH": os.pathsep.join((str(workspace), str(workspace / "src"))),
+                        "PYTHONDONTWRITEBYTECODE": "1",
+                    }
+                    if "SYSTEMROOT" in os.environ:
+                        child_env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+                child_env["PYTHONPATH"] = os.pathsep.join((str(workspace), str(workspace / "src")))
+                child_env["COVERAGE_FILE"] = str(coverage_file)
 
                 try:
                     stdout_path = temp_root / "pytest.stdout"
                     stderr_path = temp_root / "pytest.stderr"
                     with stdout_path.open("wb") as stdout_file, stderr_path.open("wb") as stderr_file:
                         result = subprocess.run(
-                            [sys.executable, "-m", "coverage", "run", "--branch", "-m", "pytest", "-q", "-p", "no:cacheprovider"],
+                            [str(runner), "-m", "coverage", "run", "--branch", "-m", "pytest", "-q", "-p", "no:cacheprovider"],
                             cwd=workspace,
                             stdout=stdout_file,
                             stderr=stderr_file,
@@ -117,7 +139,7 @@ def verify_tests(state: TestGapState) -> dict:
                     if passed:
                         try:
                             report = subprocess.run(
-                                [sys.executable, "-m", "coverage", "json", "-o", str(temp_root / "coverage.json")],
+                                [str(runner), "-m", "coverage", "json", "-o", str(temp_root / "coverage.json")],
                                 cwd=workspace,
                                 capture_output=True,
                                 text=True,

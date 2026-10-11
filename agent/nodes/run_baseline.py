@@ -7,6 +7,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+from agent.test_environment import (
+    TestEnvironmentError,
+    fallback_test_environment,
+    prepare_test_environment,
+)
 from agent.state import TestGapState
 
 
@@ -70,18 +75,33 @@ def run_baseline(state: TestGapState) -> dict:
         coverage_file = Path(temp_dir) / "coverage.json"
         stdout_path = Path(temp_dir) / "pytest.stdout"
         stderr_path = Path(temp_dir) / "pytest.stderr"
-        child_env = {
-            "PATH": os.environ.get("PATH", ""),
-            "HOME": temp_dir,
-            "PYTHONPATH": os.pathsep.join((str(workspace), str(workspace / "src"))),
-            "PYTHONDONTWRITEBYTECODE": "1",
-        }
-        if "SYSTEMROOT" in os.environ:
-            child_env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+        test_environment = {"status": "not_prepared"}
+        setup_warning = None
+        runner = Path(sys.executable)
+        if state.get("repository_url"):
+            try:
+                runner, child_env, test_environment = prepare_test_environment(
+                    root,
+                    timeout_seconds=state.get("run_timeout_seconds", 90),
+                )
+            except TestEnvironmentError as exc:
+                setup_warning = str(exc)
+                test_environment = {"status": "failed", "reason": setup_warning}
+                child_env = fallback_test_environment(root, Path(temp_dir))
+        else:
+            child_env = {
+                "PATH": os.environ.get("PATH", ""),
+                "HOME": temp_dir,
+                "PYTHONPATH": os.pathsep.join((str(workspace), str(workspace / "src"))),
+                "PYTHONDONTWRITEBYTECODE": "1",
+            }
+            if "SYSTEMROOT" in os.environ:
+                child_env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+        child_env["PYTHONPATH"] = os.pathsep.join((str(workspace), str(workspace / "src")))
         with stdout_path.open("wb") as stdout_file, stderr_path.open("wb") as stderr_file:
             result = subprocess.run(
                 [
-                    sys.executable, "-m", "coverage", "run", "--branch", "-m", "pytest",
+                    str(runner), "-m", "coverage", "run", "--branch", "-m", "pytest",
                     "-q", "-p", "no:cacheprovider",
                 ],
                 cwd=workspace,
@@ -95,6 +115,7 @@ def run_baseline(state: TestGapState) -> dict:
         summary: dict = {
             **state.get("baseline_summary", {}),
             "command": "python -m coverage run --branch -m pytest -q",
+            "test_environment": test_environment,
             "exit_code": result.returncode,
             "stdout": stdout_path.read_bytes()[-8000:].decode(errors="replace"),
             "stderr": stderr_path.read_bytes()[-8000:].decode(errors="replace"),
@@ -104,7 +125,7 @@ def run_baseline(state: TestGapState) -> dict:
         baseline_status = "passed"
         if result.returncode == 0:
             report = subprocess.run(
-                [sys.executable, "-m", "coverage", "json", "-o", str(coverage_file)],
+                [str(runner), "-m", "coverage", "json", "-o", str(coverage_file)],
                 cwd=workspace,
                 capture_output=True,
                 text=True,
@@ -143,7 +164,7 @@ def run_baseline(state: TestGapState) -> dict:
                 warning = "pytest found no tests and no testable Python source files were found."
         else:
             combined_output = summary["stdout"] + "\n" + summary["stderr"]
-            if _is_environment_collection_failure(combined_output):
+            if setup_warning or _is_environment_collection_failure(combined_output):
                 files, parse_failures = _static_python_files(workspace, ignored)
                 if files:
                     summary["files"] = files
@@ -160,6 +181,8 @@ def run_baseline(state: TestGapState) -> dict:
                         "are missing in the scanner environment. Coverage is unavailable; continuing with "
                         "AST-based candidates. Generated tests may remain unverified until setup is provided."
                     )
+                    if setup_warning:
+                        warning = f"{setup_warning} Coverage is unavailable; continuing with AST-based candidates."
                 else:
                     baseline_status = "failed"
                     warning = (

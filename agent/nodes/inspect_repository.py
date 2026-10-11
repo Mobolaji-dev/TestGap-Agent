@@ -8,7 +8,11 @@ def inspect_repository(state: TestGapState) -> dict:
     if not root.is_dir():
         raise ValueError("Configured project path is not a directory")
 
-    config_files = [name for name in ("pyproject.toml", "pytest.ini", "setup.cfg") if (root / name).exists()]
+    config_files = [
+        name
+        for name in ("pyproject.toml", "pytest.ini", "setup.cfg", "requirements.txt", ".env.example")
+        if (root / name).exists()
+    ]
     test_dirs = [name for name in ("tests", "test") if (root / name).is_dir()]
     return {
         "baseline_summary": {

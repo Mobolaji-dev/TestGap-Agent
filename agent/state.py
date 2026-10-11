@@ -13,6 +13,7 @@ class TestGapState(TypedDict, total=False):
     run_id: str
     project_id: str
     project_path: str
+    repository_url: str | None
     target_limit: int
     run_timeout_seconds: int
     events: list[AgentEvent]

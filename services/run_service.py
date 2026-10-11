@@ -160,6 +160,7 @@ class RunService:
                 "run_id": run_id,
                 "project_id": project.id,
                 "project_path": str(project.path),
+                "repository_url": project.repository_url,
                 "target_limit": payload.target_limit,
                 "run_timeout_seconds": settings.run_timeout_seconds,
                 "events": [],
