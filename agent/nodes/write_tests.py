@@ -175,7 +175,8 @@ def write_tests(state: TestGapState) -> dict:
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=2_000,
+            # 2,000 truncated the CampusPay draft before it was complete.
+            max_tokens=4_000,
         )
         duration_ms = int((perf_counter() - started) * 1000)
         choice = response.choices[0]
