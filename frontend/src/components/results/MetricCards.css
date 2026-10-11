@@ -1,0 +1,66 @@
+/* MetricCards component styles */
+
+.metric-cards-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.metric-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-md);
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  background-color: var(--cloud);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+}
+
+.metric-card-title {
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.metric-card-value {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  word-break: break-word;
+}
+
+.text-display-metric {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.text-unavailable {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.metric-cards-caption {
+  margin: 0;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+@media (max-width: 900px) {
+  .metric-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .metric-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}

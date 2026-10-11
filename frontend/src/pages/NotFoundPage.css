@@ -1,0 +1,64 @@
+/* NotFoundPage component styles */
+
+.not-found-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--canvas);
+  padding: var(--spacing-xxl) var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.not-found-container {
+  max-width: 600px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.not-found-container h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 96px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: var(--spacing-lg);
+}
+
+.not-found-container p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: var(--spacing-lg);
+  padding: 12px 24px;
+  background-color: var(--cloud);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.back-link:hover {
+  background-color: var(--paper);
+  border-color: var(--hairline-strong);
+}
+
+.back-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

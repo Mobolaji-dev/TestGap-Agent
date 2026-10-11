@@ -1,0 +1,209 @@
+/* AppShell - Two-column layout */
+
+.app-shell {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background-color: var(--canvas);
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--canvas);
+  position: relative;
+}
+
+/* Desktop sidebar (always visible) */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  background-color: var(--paper);
+  border-right: 1px solid var(--hairline);
+  overflow-y: auto;
+  padding: var(--spacing-md) 0;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: 0 var(--spacing-md);
+}
+
+.sidebar-brand {
+  padding: var(--spacing-sm) 0;
+  color: var(--ink);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.sidebar-nav-label {
+  color: var(--ink-soft);
+  padding: 0 var(--spacing-xs);
+}
+
+.sidebar-nav nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 44px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: none;
+  border-radius: var(--rounded-md);
+  background-color: transparent;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.nav-item:hover {
+  color: var(--ink);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.nav-item-active {
+  background-color: var(--primary);
+  color: var(--on-primary);
+}
+
+/* Hamburger button (hidden on desktop) */
+.hamburger {
+  display: none;
+  position: fixed;
+  top: var(--spacing-md);
+  left: var(--spacing-md);
+  width: 44px;
+  height: 44px;
+  padding: var(--spacing-xs);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  background-color: var(--cloud);
+  color: var(--ink);
+  cursor: pointer;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.hamburger:hover {
+  background-color: var(--paper);
+  border-color: var(--hairline-strong);
+}
+
+.hamburger:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Mobile drawer overlay and backdrop */
+.drawer-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 260px;
+  height: 100vh;
+  background-color: var(--paper);
+  border-right: 1px solid var(--hairline);
+  overflow-y: auto;
+  padding: var(--spacing-md) 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 101;
+}
+
+.drawer .sidebar-content {
+  padding: 0 var(--spacing-md);
+}
+
+/* Mobile layout - below 768px */
+@media (max-width: 767px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .drawer-backdrop {
+    display: block;
+  }
+
+  .app-main {
+    flex: 1;
+    padding-top: 60px;
+  }
+}
+
+/* Tablet and large mobile - 768px to 1023px */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar {
+    width: 260px;
+  }
+
+  .hamburger {
+    display: none;
+  }
+
+  .drawer-backdrop {
+    display: none;
+  }
+}
+
+/* Desktop - 1024px and up */
+@media (min-width: 1024px) {
+  .hamburger {
+    display: none;
+  }
+
+  .drawer-backdrop {
+    display: none;
+  }
+
+  .sidebar {
+    display: flex;
+  }
+}

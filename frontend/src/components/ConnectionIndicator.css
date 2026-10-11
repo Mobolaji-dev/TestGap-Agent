@@ -1,0 +1,45 @@
+/* ConnectionIndicator component styles */
+
+.connection-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Live connection */
+.connection-dot-live {
+  background-color: var(--accent-cyan);
+}
+
+/* Connecting */
+.connection-dot-connecting {
+  background-color: var(--accent-cyan);
+}
+
+/* Reconnecting */
+.connection-dot-reconnecting {
+  background-color: var(--warning);
+}
+
+/* Polling */
+.connection-dot-polling {
+  background-color: var(--warning);
+}
+
+/* Closed */
+.connection-dot-closed {
+  background-color: var(--ink-soft);
+}
+
+.connection-label {
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}

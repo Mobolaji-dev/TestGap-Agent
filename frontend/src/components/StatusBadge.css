@@ -1,0 +1,64 @@
+/* StatusBadge component styles */
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--rounded-sm);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Ready status */
+.status-ready {
+  background-color: var(--success);
+  color: var(--on-ink);
+}
+
+/* Not ready status */
+.status-not-ready {
+  background-color: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--hairline);
+}
+
+/* Queued status */
+.status-queued {
+  background-color: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--hairline);
+}
+
+/* Running status */
+.status-running {
+  background-color: var(--accent-cyan);
+  color: var(--on-ink);
+}
+
+/* Completed status */
+.status-completed {
+  background-color: var(--success);
+  color: var(--on-ink);
+}
+
+/* Completed with warnings status */
+.status-completed_with_warnings {
+  background-color: var(--warning);
+  color: var(--on-ink);
+}
+
+/* Failed status */
+.status-failed {
+  background-color: var(--danger);
+  color: var(--on-ink);
+}
+
+/* Cancelled status */
+.status-cancelled {
+  background-color: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--hairline-strong);
+}
