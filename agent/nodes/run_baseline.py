@@ -39,6 +39,14 @@ def _static_python_files(root: Path, ignored: set[str]) -> tuple[dict[str, dict]
     return files, parse_failures
 
 
+def _is_environment_collection_failure(output: str) -> bool:
+    """Identify collection failures caused by missing project setup, not test assertions."""
+    return (
+        "ModuleNotFoundError: No module named" in output
+        or ("ValidationError" in output and "Field required" in output)
+    )
+
+
 def run_baseline(state: TestGapState) -> dict:
     root = Path(state["project_path"]).resolve(strict=True)
     ignored = {
@@ -134,8 +142,33 @@ def run_baseline(state: TestGapState) -> dict:
                 baseline_status = "no_python_source"
                 warning = "pytest found no tests and no testable Python source files were found."
         else:
-            baseline_status = "failed"
-            warning = "The existing baseline suite failed; generation is blocked until the baseline is understood."
+            combined_output = summary["stdout"] + "\n" + summary["stderr"]
+            if _is_environment_collection_failure(combined_output):
+                files, parse_failures = _static_python_files(workspace, ignored)
+                if files:
+                    summary["files"] = files
+                    summary["baseline_mode"] = "environment_bootstrap"
+                    summary["parse_failures"] = parse_failures
+                    summary["coverage_totals"] = {
+                        "covered_lines": None,
+                        "num_statements": sum(len(file_data["missing_lines"]) for file_data in files.values()),
+                        "percent_covered": None,
+                    }
+                    baseline_status = "bootstrap"
+                    warning = (
+                        "Pytest collection could not start because project dependencies or required settings "
+                        "are missing in the scanner environment. Coverage is unavailable; continuing with "
+                        "AST-based candidates. Generated tests may remain unverified until setup is provided."
+                    )
+                else:
+                    baseline_status = "failed"
+                    warning = (
+                        "Pytest collection failed because project setup is missing, and no Python source "
+                        "files were available for AST-based fallback."
+                    )
+            else:
+                baseline_status = "failed"
+                warning = "The existing baseline suite failed; generation is blocked until the baseline is understood."
         summary["baseline_status"] = baseline_status
 
     events = [
