@@ -38,3 +38,45 @@
 @media (max-width: 950px) { .landing-hero { grid-template-columns: 1fr; gap: 24px; padding-top: 70px; }.hero-copy { max-width: 760px; }.hero-visual { min-height: 400px; max-width: 620px; width: 100%; margin: 0 auto; }.chip-coverage { right: 2%; }.process-grid, .capabilities-grid { grid-template-columns: 1fr 1fr; }.process-card:last-child, .capability-card:last-child { grid-column: 1 / -1; } }
 @media (max-width: 640px) { .landing-hero { min-height: 0; padding: 60px 22px 82px; }.hero-copy h1 { font-size: clamp(42px, 12vw, 60px); }.hero-lede { font-size: 15px; }.hero-visual { min-height: 310px; margin-top: 10px; }.terminal-card { transform: none; }.terminal-content { padding: 14px; }.terminal-step { min-height: 53px; }.chip-coverage { top: 0; right: 0; transform: scale(.85); transform-origin: top right; }.chip-files { bottom: 0; left: 0; transform: scale(.9); transform-origin: bottom left; }.orbit-one { height: 210px; }.orbit-two { height: 260px; }.hero-scroll { bottom: 20px; white-space: nowrap; }.trust-strip { justify-content: flex-start; padding-inline: 22px; }.trust-strip > span { width: 100%; }.landing-section { padding: 70px 22px; }.process-grid, .capabilities-grid { grid-template-columns: 1fr; margin-top: 30px; }.process-card:last-child, .capability-card:last-child { grid-column: auto; }.process-card { min-height: 0; }.capabilities-head { align-items: flex-start; flex-direction: column; gap: 16px; }.boundary-section { padding-top: 0; }.boundary-card { grid-template-columns: 1fr; }.landing-cta { padding: 64px 22px 76px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+/* Mobile layout: keep the sample run readable and prevent decorative badges
+   from covering its result details. */
+@media (max-width: 640px) {
+  .hero-visual {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0;
+  }
+
+  .hero-visual .terminal-card {
+    width: 100%;
+  }
+
+  .hero-visual .floating-chip {
+    position: static;
+    transform: none;
+  }
+
+  .hero-visual .chip-coverage {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 13px;
+  }
+
+  .hero-visual .chip-coverage strong {
+    font-size: 16px;
+  }
+
+  .hero-visual .chip-coverage i {
+    font-size: 9px;
+  }
+
+  .hero-visual .chip-files {
+    align-self: flex-start;
+  }
+}

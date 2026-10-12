@@ -14,3 +14,39 @@
 .docs-end-cta { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 28px; padding: 18px; border: 1px solid #363548; border-radius: 9px; background: linear-gradient(100deg, rgba(116,112,238,.12), rgba(255,255,255,.02)); }.docs-end-cta > div { display: flex; flex-direction: column; gap: 5px; }.docs-end-cta strong { color: #ebecf3; font-size: 13px; }.docs-end-cta span { color: #969baa; font-size: 11px; }.docs-end-cta a { display: flex; align-items: center; gap: 8px; flex: none; color: #b7b4ff; text-decoration: none; font-size: 11px; font-weight: 650; }.docs-end-cta svg { width: 14px; }.docs-updated { margin-top: 26px; color: #777c8c; font-size: 10px; line-height: 1.7; }
 @media (max-width: 800px) { .docs-page { grid-template-columns: 1fr; gap: 24px; padding: 30px 22px 70px; }.docs-sidebar { position: static; padding: 0; }.docs-sidebar nav { flex-direction: row; overflow-x: auto; padding: 0 0 8px; border-left: 0; border-bottom: 1px solid #30323e; }.docs-sidebar nav a { flex: none; }.docs-sidebar-cta { display: none; }.docs-breadcrumb { margin-bottom: 26px; } }
 @media (max-width: 500px) { .docs-api-list { grid-template-columns: 1fr; }.docs-flow { justify-content: flex-start; }.docs-flow span { padding: 6px 8px; border: 1px solid #2d303a; border-radius: 5px; }.docs-flow i { display: none; }.docs-end-cta { align-items: flex-start; flex-direction: column; } }
+
+/* Replace the narrow horizontal TOC scroller with visible tap targets. */
+@media (max-width: 800px) {
+  .docs-sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    overflow: visible;
+    padding: 0 0 16px;
+  }
+
+  .docs-sidebar nav a {
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid #292c37;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.02);
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 380px) {
+  .docs-page {
+    padding-inline: 16px;
+  }
+
+  .docs-sidebar nav a {
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .docs-table-wrap th,
+  .docs-table-wrap td {
+    padding: 10px;
+  }
+}
