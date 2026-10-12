@@ -69,7 +69,8 @@ def test_test_writer_prompt_supplies_exact_route_and_blocks_unprefixed_guess():
     assert "GET /api/auth/departments" in prompt
     assert "never call a child path without its prefix" in prompt
     assert "provide a complete fixture" in TEST_WRITER_SYSTEM_PROMPT
-    assert "150 lines" in prompt
+    assert "aim for 150 lines or fewer" in prompt
+    assert "250 lines" in prompt
     assert "alias such imports with a leading underscore" in prompt
 
 
@@ -82,10 +83,16 @@ def test_validation_accepts_a_complete_bounded_draft_with_more_than_three_tests(
     assert _validate_test_draft(content) == 9
 
 
-def test_validation_rejects_drafts_that_exceed_the_repair_limit():
-    content = "\n".join(["def test_case():", *["    value = 1" for _ in range(150)], "    assert value == 1"])
+def test_validation_accepts_a_180_line_candidate():
+    content = "\n".join(["def test_case():", *["    value = 1" for _ in range(178)], "    assert value == 1"])
 
-    with pytest.raises(DraftValidationError, match="limit is 150"):
+    assert _validate_test_draft(content) == 1
+
+
+def test_validation_rejects_drafts_that_exceed_the_shared_limit():
+    content = "\n".join(["def test_case():", *["    value = 1" for _ in range(250)], "    assert value == 1"])
+
+    with pytest.raises(DraftValidationError, match="limit is 250"):
         _validate_test_draft(content)
 
 

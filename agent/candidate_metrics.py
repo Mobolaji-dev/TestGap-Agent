@@ -4,7 +4,7 @@ import ast
 import re
 
 _MAX_GENERATED_TESTS = 12
-_MAX_GENERATED_LINES = 150
+_MAX_GENERATED_LINES = 250
 
 
 class DraftValidationError(ValueError):

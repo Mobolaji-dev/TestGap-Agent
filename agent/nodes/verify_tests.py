@@ -181,7 +181,7 @@ def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt:
                     "content": (
                         "You are repairing a pytest module that failed in the target repository. "
                         "Use only the supplied test code and real pytest output. Return a complete "
-                        "corrected pytest file only. Keep it under 150 lines by removing unnecessary helpers and cases. "
+                        "corrected pytest file only. Keep it concise and under 250 lines by removing unnecessary helpers and cases. "
                         "Do not change application code or invent routes/imports.\n\n"
                         "Mock and assertion rules:\n"
                         "- If a test failed because an unconfigured MagicMock was compared to a concrete value "
@@ -199,7 +199,7 @@ def _repair_candidate(state: TestGapState, item: dict, diagnostic: str, attempt:
                         f"Actual target source:\n```python\n{target_source}\n```\n\n"
                         f"Current candidate (broken):\n```python\n{item['content']}\n```\n\n"
                         f"Actual pytest failure output:\n```text\n{diagnostic[-_MAX_DIAGNOSTIC_CHARS:]}\n```\n\n"
-                        "Fix the candidate so all tests pass and keep the complete file under 150 lines. "
+                        "Fix the candidate so all tests pass and keep the complete file under 250 lines. "
                         "Address the exact failure shown in the pytest output. "
                         "If a mock attribute or header was unconfigured, configure it explicitly or use a real object (e.g. fastapi.Response()). "
                         "Do not weaken assertions just to hide failures. Preserve useful test intent. "

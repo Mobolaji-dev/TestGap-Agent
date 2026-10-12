@@ -40,7 +40,7 @@ def build_test_writer_prompt(
         f"{route_context or '(none detected; do not invent HTTP routes)'}\n\n"
         f"Source excerpt (reference only):\n```python\n{source}\n```\n\n"
         "Return a complete, original pytest module aiming for 3 top-level test functions for behavior in the target module. "
-        "Do not wrap tests in classes. Keep the file concise; never exceed 12 test functions or 150 lines. "
+        "Do not wrap tests in classes. Keep the file concise, aim for 150 lines or fewer, and never exceed 12 test functions or 250 lines. "
         "Use meaningful behavioral assertions and distinct cases. "
         "Do not copy existing tests, add placeholder or smoke tests, or repeat unrelated repository test classes. "
         "Only use project import paths shown in the supplied source imports; do not guess module names. "
