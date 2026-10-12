@@ -12,7 +12,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const sidebarRef = useRef(null);
 
-  const isActive = location.pathname === "/";
+  const isActive = location.pathname === "/app";
 
   // Extract runId from URL (e.g., /run/:runId or /results/:runId)
   const runIdMatch = location.pathname.match(/\/(?:run|results)\/([^/]+)/);
@@ -64,7 +64,7 @@ export default function Sidebar() {
             <nav>
               <button
                 className={`nav-item ${isActive ? "nav-item-active" : ""}`}
-                onClick={() => handleNavClick("/")}
+                onClick={() => handleNavClick("/app")}
                 aria-current={isActive ? "page" : undefined}
               >
                 New scan
@@ -130,7 +130,7 @@ export default function Sidebar() {
               <nav>
                 <button
                   className={`nav-item ${isActive ? "nav-item-active" : ""}`}
-                  onClick={() => handleNavClick("/")}
+                  onClick={() => handleNavClick("/app")}
                   aria-current={isActive ? "page" : undefined}
                 >
                   New scan

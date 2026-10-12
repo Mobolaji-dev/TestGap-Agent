@@ -1,0 +1,35 @@
+import { Link } from "react-router-dom";
+import { HiArrowRight, HiCheckCircle, HiExclamationTriangle } from "react-icons/hi2";
+import "./DocsPage.css";
+
+const toc = [
+  ["quickstart", "Quickstart"],
+  ["workflow", "How a scan works"],
+  ["results", "Read your results"],
+  ["patches", "Review and download patches"],
+  ["limits", "Configure a scan"],
+  ["api", "API reference"],
+  ["scope", "Supported behavior"],
+];
+
+export default function DocsPage() {
+  return (
+    <div className="docs-page">
+      <aside className="docs-sidebar"><div className="docs-sidebar-label">DOCUMENTATION</div><nav aria-label="Documentation sections">{toc.map(([id, label]) => <a href={`#${id}`} key={id}>{label}</a>)}</nav><div className="docs-sidebar-cta"><span>Ready to try it?</span><Link to="/app">Open scanner <HiArrowRight /></Link></div></aside>
+      <article className="docs-content">
+        <div className="docs-breadcrumb"><Link to="/">TestGap</Link><span>/</span><span>Documentation</span></div>
+        <div className="eyebrow">GUIDES & REFERENCE</div>
+        <h1>TestGap documentation</h1>
+        <p className="docs-intro">Everything you need to run a coverage scan, understand the output, and review generated test patches safely.</p>
+        <section id="quickstart" className="docs-section"><div className="docs-section-kicker">01 · GET STARTED</div><h2>Run your first scan</h2><ol className="docs-steps"><li><span>1</span><div><strong>Open the scanner</strong><p>Choose <Link to="/app">Open scanner</Link> and select the GitHub repository option.</p></div></li><li><span>2</span><div><strong>Enter a public GitHub repository</strong><p>Paste its HTTPS URL, for example <code>https://github.com/owner/repository</code>. Private repositories and other Git hosts are not supported.</p></div></li><li><span>3</span><div><strong>Set scan limits</strong><p>Choose how many target files to rank and how many repair attempts to allow. Keep the defaults for a first run.</p></div></li><li><span>4</span><div><strong>Start and follow the run</strong><p>The live run page shows each workflow step, progress events, and elapsed time. You can leave the page and return using the run URL.</p></div></li></ol></section>
+        <section id="workflow" className="docs-section"><div className="docs-section-kicker">02 · WORKFLOW</div><h2>How a scan works</h2><p>TestGap prepares a temporary copy of the repository, inspects its Python files and test setup, then runs the existing pytest suite with coverage when the repository environment can be installed.</p><div className="docs-callout"><HiCheckCircle /><p>A passing baseline lets TestGap rank files with uncovered statements, draft a focused candidate test, and verify that candidate against the repository’s existing suite.</p></div><div className="docs-flow"><span>Clone</span><i>→</i><span>Inspect</span><i>→</i><span>Baseline</span><i>→</i><span>Rank gaps</span><i>→</i><span>Draft</span><i>→</i><span>Verify</span></div></section>
+        <section id="results" className="docs-section"><div className="docs-section-kicker">03 · INTERPRETATION</div><h2>Read your results</h2><div className="docs-table-wrap"><table><thead><tr><th>Result</th><th>What it means</th></tr></thead><tbody><tr><td>Baseline coverage</td><td>Coverage measured before candidate tests. If dependency setup fails, coverage may be unavailable and the run may use static analysis instead.</td></tr><tr><td>Ranked targets</td><td>Python files ordered by the estimated opportunity for additional test coverage.</td></tr><tr><td>Generated tests</td><td>Draft tests for the selected target. A draft is not accepted until the verification step completes successfully.</td></tr><tr><td>Warnings</td><td>Setup limits, baseline failures, verification failures, or unavailable metrics that affect what the run could establish.</td></tr></tbody></table></div><div className="docs-callout docs-callout-warning"><HiExclamationTriangle /><p>“Not available” means the backend did not compute that metric. Read the warnings and step details before interpreting a missing value as zero.</p></div></section>
+        <section id="patches" className="docs-section"><div className="docs-section-kicker">04 · REVIEW SAFELY</div><h2>Review and download patches</h2><p>Passing candidate tests are returned as test-only patches. Inspect the diff before using it, run the project’s checks in your normal development environment, and apply it through your usual review process. TestGap never writes generated changes into the repository checkout.</p><p>On the results page, use the patch download action to save the unified diff. The run’s patch endpoint is also available at <code>GET /api/runs/&lt;run_id&gt;/patch</code>.</p></section>
+        <section id="limits" className="docs-section"><div className="docs-section-kicker">05 · OPTIONS</div><h2>Configure a scan</h2><ul className="docs-bullet-list"><li><strong>Target limit:</strong> maximum number of under-tested files to rank, from 1 to 10.</li><li><strong>Repair limit:</strong> maximum repair attempts for a rejected candidate, from 0 to 2.</li><li><strong>Verify mutations:</strong> mutation verification is not currently implemented; this option is informational and should not be interpreted as a mutation score.</li></ul></section>
+        <section id="api" className="docs-section"><div className="docs-section-kicker">06 · INTEGRATION</div><h2>API reference</h2><p>The backend exposes OpenAPI documentation at <code>/docs</code> on the API host. The frontend uses these routes:</p><div className="docs-api-list"><code>GET /api/projects</code><code>POST /api/runs</code><code>GET /api/runs/{"{run_id}"}</code><code>GET /api/runs/{"{run_id}"}/events</code><code>POST /api/runs/{"{run_id}"}/cancel</code><code>GET /api/runs/{"{run_id}"}/diff</code><code>GET /api/runs/{"{run_id}"}/patch</code></div><p>Progress events are delivered as Server-Sent Events (SSE). The API schema is the source of truth for request and response fields.</p></section>
+        <section id="scope" className="docs-section"><div className="docs-section-kicker">07 · CURRENT SCOPE</div><h2>Supported behavior and safety</h2><ul className="docs-bullet-list"><li>Scans public GitHub HTTPS repositories with Python source and pytest-compatible tests.</li><li>Runs repository code during baseline and candidate verification. Candidate checks run from a disposable copy with a reduced environment.</li><li>This MVP does not provide an OS/container sandbox. Scan only repositories you trust.</li><li>Private repositories, arbitrary local filesystem paths, and non-GitHub hosts are not accepted.</li><li>Coverage depends on the repository’s test dependencies installing within the configured setup window.</li></ul><div className="docs-end-cta"><div><strong>Ready to find a coverage gap?</strong><span>Start with a public Python repository.</span></div><Link to="/app">Open scanner <HiArrowRight /></Link></div></section>
+        <p className="docs-updated">Documentation describes the current MVP. Some metrics and options may be unavailable depending on repository setup.</p>
+      </article>
+    </div>
+  );
+}

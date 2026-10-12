@@ -204,7 +204,7 @@ export default function RunPage() {
             <p className="text-body-sm panel-text">
               The run ID <code className="text-code-md run-id-code">{runId}</code> does not exist or could not be found.
             </p>
-            <Link to="/" className="action-button-link">
+            <Link to="/app" className="action-button-link">
               Back to Start
             </Link>
           </div>
@@ -383,7 +383,7 @@ export default function RunPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/app")}
                   className="action-button"
                 >
                   NEW SCAN
@@ -399,7 +399,7 @@ export default function RunPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/app")}
                   className="action-button"
                 >
                   NEW SCAN

@@ -1,0 +1,78 @@
+.public-site {
+  min-height: 100vh;
+  color: #f5f6fa;
+  background: #08090d;
+}
+
+.public-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76px;
+  padding: 0 clamp(20px, 5vw, 80px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 9, 13, 0.88);
+  backdrop-filter: blur(18px);
+}
+
+.public-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #f5f6fa;
+  text-decoration: none;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.public-brand img { width: 30px; height: 30px; object-fit: contain; }
+.brand-period { color: #8d8bff; }
+.public-nav { display: flex; align-items: center; gap: clamp(16px, 2.6vw, 38px); }
+.public-nav a, .public-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #b7bac7;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 550;
+  transition: color 150ms ease;
+}
+.public-nav a:hover, .public-footer a:hover { color: #fff; }
+.public-nav .public-nav-cta {
+  min-height: 42px;
+  padding: 0 17px;
+  border: 1px solid rgba(160, 158, 255, 0.38);
+  border-radius: 8px;
+  background: #7774ef;
+  color: white;
+}
+.public-nav .public-nav-cta:hover { background: #8986ff; }
+.public-main { min-height: calc(100vh - 150px); }
+.public-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px clamp(20px, 5vw, 80px);
+  border-top: 1px solid rgba(255,255,255,.08);
+  color: #8f93a3;
+  font-size: 12px;
+}
+.public-footer > div { display: flex; gap: 22px; }
+
+@media (max-width: 640px) {
+  .public-header { min-height: 68px; padding-inline: 18px; }
+  .public-brand { font-size: 15px; }
+  .public-brand img { width: 27px; height: 27px; }
+  .public-nav { gap: 14px; }
+  .public-nav > a:first-child, .public-nav > a:nth-child(3) { display: none; }
+  .public-nav a { font-size: 12px; }
+  .public-nav .public-nav-cta { min-height: 38px; padding-inline: 12px; }
+  .public-footer { align-items: flex-start; flex-wrap: wrap; padding: 24px 20px; }
+  .public-footer > span { order: 3; width: 100%; }
+}
